@@ -1,19 +1,32 @@
 package gonet
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 )
 
+// IsPortFree tells whether the port is free or not
+func IsPortFree(port int) bool {
+	l, err := ListenPort(port)
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+	_ = l.Close()
+
+	return true
+}
+
 // FreePort asks the kernel for a free open port that is ready to use.
 func FreePort() (int, error) {
-	l, e := listenPort0()
+	l, e := ListenPort(0)
 	if e != nil {
 		return 0, e
 	}
-	port := l.Addr().(*net.TCPAddr).Port
+
 	_ = l.Close()
-	return port, nil
+	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
 // MustFreePort is deprecated, use FreePort instead
@@ -36,7 +49,7 @@ func FreePorts(count int) ([]int, error) {
 	ports := make([]int, count)
 
 	for i := 0; i < count; i++ {
-		l, err := listenPort0()
+		l, err := ListenPort(0)
 		if err != nil {
 			return nil, err
 		}
@@ -47,10 +60,6 @@ func FreePorts(count int) ([]int, error) {
 	return ports, nil
 }
 
-func listenPort0() (*net.TCPListener, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
-	if err != nil {
-		return nil, err
-	}
-	return net.ListenTCP("tcp", addr)
+func ListenPort(port int) (net.Listener, error) {
+	return net.Listen("tcp", fmt.Sprintf(":%d", port))
 }

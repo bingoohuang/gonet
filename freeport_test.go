@@ -1,10 +1,28 @@
 package gonet
 
 import (
+	"github.com/stretchr/testify/assert"
+
 	"net"
 	"strconv"
 	"testing"
 )
+
+func TestMustFreePort(t *testing.T) {
+	port := MustFreePort()
+	assert.True(t, IsPortFree(port))
+}
+
+func BenchmarkFreePort(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		port := MustFreePort()
+		assert.True(b, port > 0)
+	}
+}
+
+func TestMustFreePortStr(t *testing.T) {
+	assert.NotEmpty(t, MustFreePortStr())
+}
 
 func TestGetFreePort(t *testing.T) {
 	port, err := FreePort()
