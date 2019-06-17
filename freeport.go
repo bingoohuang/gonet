@@ -1,4 +1,4 @@
-package freeport
+package gonet
 
 import (
 	"net"
@@ -16,9 +16,9 @@ func FreePort() (int, error) {
 	return port, nil
 }
 
-// Port is deprecated, use FreePort instead
+// MustFreePort is deprecated, use FreePort instead
 // Ask the kernel for a free open port that is ready to use
-func Port() int {
+func MustFreePort() int {
 	port, err := FreePort()
 	if err != nil {
 		panic(err)
@@ -26,9 +26,9 @@ func Port() int {
 	return port
 }
 
-// PortString get a free port as string.
-func PortString() string {
-	return strconv.Itoa(Port())
+// MustFreePortStr get a free port as string.
+func MustFreePortStr() string {
+	return strconv.Itoa(MustFreePort())
 }
 
 // FreePort asks the kernel for free open ports that are ready to use.
