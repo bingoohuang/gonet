@@ -60,6 +60,15 @@ func FreePorts(count int) ([]int, error) {
 	return ports, nil
 }
 
+// ListenPort listens on port
 func ListenPort(port int) (net.Listener, error) {
 	return net.Listen("tcp", fmt.Sprintf(":%d", port))
+}
+
+// FindFreePortFrom finds a free port from starting port
+func FindFreePortFrom(starting int) int {
+	p := starting
+	for ; !IsPortFree(p); p++ {
+	}
+	return p
 }

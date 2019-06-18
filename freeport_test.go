@@ -63,3 +63,8 @@ func TestGetFreePorts(t *testing.T) {
 		defer l.Close()
 	}
 }
+
+func TestFindFreePortFrom(t *testing.T) {
+	p := FindFreePortFrom(1024)
+	assert.True(t, p >= 1024)
+}
