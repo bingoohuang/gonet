@@ -11,14 +11,27 @@ import (
 )
 
 func TestCreateTLSListenerV1(t *testing.T) {
-	create("", "", t)
-}
-func TestCreateTLSListenerV2(t *testing.T) {
-	create("tls_test_files/client.key", "tls_test_files/client.pem", t)
+	create("tls_test_files/server.key", "tls_test_files/server.pem", "", "", t)
 }
 
-func create(clientKey, clientCrt string, t *testing.T) {
-	tlsConfig := MustCreateServerTLSConfig("tls_test_files/server.key", "tls_test_files/server.pem", clientCrt)
+func TestCreateTLSListenerV10(t *testing.T) {
+	pemCert, pemKey, _ := MustKeyPairWithPin()
+	create(MustTempFile(pemKey), MustTempFile(pemCert), "", "", t)
+}
+
+func TestCreateTLSListenerV2(t *testing.T) {
+	create("tls_test_files/server.key", "tls_test_files/server.pem",
+		"tls_test_files/client.key", "tls_test_files/client.pem", t)
+}
+
+func TestCreateTLSListenerV20(t *testing.T) {
+	pemCert, pemKey, _ := MustKeyPairWithPin()
+	cliCert, cliKey, _ := MustKeyPairWithPin()
+	create(MustTempFile(pemKey), MustTempFile(pemCert), MustTempFile(cliKey), MustTempFile(cliCert), t)
+}
+
+func create(serverKey, serverCrt, clientKey, clientCrt string, t *testing.T) {
+	tlsConfig := MustCreateServerTLSConfig(serverKey, serverCrt, clientCrt)
 	portStr := MustFreePortStr()
 	ln, err := tls.Listen("tcp", ":"+portStr, tlsConfig)
 	if err != nil {
