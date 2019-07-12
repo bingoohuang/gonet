@@ -139,6 +139,7 @@ func CreateServerTLSConfigV2(serverKeyFile, serverCertFile, clientCertFile strin
 }
 
 func CreateClientTLSConfigV1() (*tls.Config, error) {
+	// #nosec G402
 	return &tls.Config{InsecureSkipVerify: true}, nil
 }
 
