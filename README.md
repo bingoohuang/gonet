@@ -5,6 +5,7 @@ net relative like port, http, rest.
 1. FreePort
 1. Get/Post/Put/Patch/Delete
 1. TLS relatives
+1. ListLocalIps
 
 
 ## Thanks

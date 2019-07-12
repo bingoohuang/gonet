@@ -2,6 +2,61 @@ package gonet
 
 import "log"
 
+// HTTPGet 表示一次HTTP的Get调用
+func HTTPGet(url string) ([]byte, error) {
+	req, err := NewReqOption().Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	return req.Bytes()
+}
+
+// RestGet 发起一次HTTP GET调用，并且反序列化JSON到v代表的指针中。
+func (s *ReqOption) RestGet(url string, v interface{}) error {
+	req, err := s.Get(url)
+	if err != nil {
+		return err
+	}
+
+	if err := req.ToJSON(v); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// RestGet 发起一次HTTP GET调用，并且反序列化JSON到v代表的指针中。
+func RestGet(url string, v interface{}) error {
+	return NewReqOption().RestGet(url, v)
+}
+
+// RestPost 表示一次HTTP的POST调用
+func RestPost(url string, req interface{}, rsp interface{}) ([]byte, error) {
+	return NewReqOption().RestPostFn(url, req, rsp, nil)
+}
+
+func (s *ReqOption) RestPostFn(url string, req interface{}, rsp interface{}, fn func(*HTTPReq)) ([]byte, error) {
+	resp, err := s.Post(url)
+	if err != nil {
+		return nil, err
+	}
+
+	if fn != nil {
+		fn(resp)
+	}
+
+	if err = resp.JSONBody(req); err != nil {
+		return nil, err
+	}
+
+	if rsp != nil {
+		return nil, resp.ToJSON(rsp)
+	}
+
+	return resp.Bytes()
+}
+
 // Get returns *HTTPReq with GET method.
 func (s *ReqOption) Get(url string) (*HTTPReq, error) {
 	return s.Req(url, "GET")
