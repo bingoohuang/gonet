@@ -26,6 +26,7 @@ func TLSGenRootFiles(path, outKey, outPem string) error {
 	if err := keyToFile(filepath.Join(path, outKey), rootKey); err != nil {
 		return err
 	}
+
 	return certToFile(filepath.Join(path, outPem), rootDerBytes)
 }
 
@@ -133,10 +134,7 @@ func TLSLoadKeyPair(path string, rootPem string, rootKey string) (crypto.Private
 	}
 	rootPrivateKey := cert.PrivateKey
 	ca, err := x509.ParseCertificate(cert.Certificate[0])
-	if err != nil {
-		return nil, nil, err
-	}
-	return rootPrivateKey, ca, nil
+	return rootPrivateKey, ca, err
 }
 
 func TLSGenRootPem() (*x509.Certificate, *ecdsa.PrivateKey, []byte, error) {
@@ -149,6 +147,7 @@ func TLSGenRootPem() (*x509.Certificate, *ecdsa.PrivateKey, []byte, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
 	rootTemplate := &x509.Certificate{
 		SerialNumber:          serialNumber,
 		Subject:               pkix.Name{Organization: []string{"BJCA"}, CommonName: "Root CA"},
@@ -160,10 +159,7 @@ func TLSGenRootPem() (*x509.Certificate, *ecdsa.PrivateKey, []byte, error) {
 		IsCA:                  true,
 	}
 	derBytes, err := x509.CreateCertificate(rand.Reader, rootTemplate, rootTemplate, &rootKey.PublicKey, rootKey)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return rootTemplate, rootKey, derBytes, nil
+	return rootTemplate, rootKey, derBytes, err
 }
 
 func TLSGenServerPem(host string, ca *x509.Certificate, key crypto.PrivateKey) (*ecdsa.PrivateKey, []byte, error) {
@@ -222,10 +218,7 @@ func TLSGenClientPem(rootCA *x509.Certificate, rootPrivate crypto.PrivateKey) (*
 	}
 	var derBytes []byte
 	derBytes, err = x509.CreateCertificate(rand.Reader, &clientTemplate, rootCA, &clientKey.PublicKey, rootPrivate)
-	if err != nil {
-		return nil, nil, err
-	}
-	return clientKey, derBytes, nil
+	return clientKey, derBytes, err
 }
 
 // keyToFile writes a PEM serialization of |key| to a new file called |filename|.
@@ -240,11 +233,8 @@ func keyToFile(filename string, key *ecdsa.PrivateKey) error {
 		//fmt.Fprintf(os.Stderr, "Unable to marshal ECDSA private key: %v", err)
 		return err
 	}
-	if err := pem.Encode(file, &pem.Block{Type: "EC PRIVATE KEY", Bytes: b}); err != nil {
-		return err
-	}
 
-	return nil
+	return pem.Encode(file, &pem.Block{Type: "EC PRIVATE KEY", Bytes: b})
 }
 
 func certToFile(filename string, derBytes []byte) error {
@@ -257,10 +247,5 @@ func certToFile(filename string, derBytes []byte) error {
 		// log.Fatalf("failed to write data to cert.pem: %s", err)
 		return err
 	}
-	if err := certOut.Close(); err != nil {
-		//log.Fatalf("error closing cert.pem: %s", err)
-		return err
-	}
-
-	return nil
+	return certOut.Close()
 }

@@ -24,53 +24,53 @@ func TLSConfigCreateServer(serverKeyFile, serverCertFile, clientRootCA string) (
 	}
 
 	c := &tls.Config{Certificates: []tls.Certificate{cert}}
-	if clientRootCA == "" {
-		return c, nil
-	}
+	if clientRootCA != "" {
+		rootCA, err := TLSLoadPermFile(clientRootCA)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read clientCertFile %s, error %v", clientRootCA, err)
+		}
 
-	rootCA, err := TLSLoadPermFile(clientRootCA)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read clientCertFile %s, error %v", clientRootCA, err)
+		c.ClientAuth = tls.RequireAndVerifyClientCert
+		c.ClientCAs = x509.NewCertPool()
+		c.ClientCAs.AddCert(rootCA)
 	}
-
-	c.ClientAuth = tls.RequireAndVerifyClientCert
-	c.ClientCAs = x509.NewCertPool()
-	c.ClientCAs.AddCert(rootCA)
 
 	return c, nil
 }
 
-func TLSConfigCreateClientMust(clientKeyFile, clientCertFile, clientRootCA string) *tls.Config {
-	if c, e := TLSConfigCreateClient(clientKeyFile, clientCertFile, clientRootCA); e != nil {
+func TLSConfigCreateClientMust(clientKeyFile, clientCertFile, serverRootCA string) *tls.Config {
+	if c, e := TLSConfigCreateClient(clientKeyFile, clientCertFile, serverRootCA); e != nil {
 		panic("failed to create TLSConfigCreateClient " + e.Error())
 	} else {
 		return c
 	}
 }
 
-func TLSConfigCreateClient(clientKeyFile, clientCertFile, clientRootCA string) (*tls.Config, error) {
+func TLSConfigCreateClient(clientKeyFile, clientCertFile, serverRootCA string) (*tls.Config, error) {
 	c := &tls.Config{}
-	if clientKeyFile == "" || clientCertFile == "" || clientRootCA == "" {
+	if serverRootCA == "" {
 		c.InsecureSkipVerify = true // #nosec G402
-		return c, nil
+	} else {
+		rootCA, err := TLSLoadPermFile(serverRootCA)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read clientCertFile %s, error %v", serverRootCA, err)
+		}
+
+		c.RootCAs = x509.NewCertPool()
+		c.RootCAs.AddCert(rootCA)
+
+		SkipHostnameVerification(c)
 	}
 
-	rootCA, err := TLSLoadPermFile(clientRootCA)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read clientCertFile %s, error %v", clientRootCA, err)
+	if clientKeyFile != "" && clientCertFile != "" {
+		cert, err := tls.LoadX509KeyPair(clientCertFile, clientKeyFile)
+		if err != nil {
+			return nil, err
+		}
+
+		c.Certificates = []tls.Certificate{cert}
 	}
 
-	c.RootCAs = x509.NewCertPool()
-	c.RootCAs.AddCert(rootCA)
-
-	SkipHostnameVerification(c)
-
-	cert, err := tls.LoadX509KeyPair(clientCertFile, clientKeyFile)
-	if err != nil {
-		return nil, err
-	}
-
-	c.Certificates = []tls.Certificate{cert}
 	return c, nil
 }
 
