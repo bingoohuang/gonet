@@ -26,6 +26,34 @@ echo "[ssl_client]"> openssl.cnf; echo "extendedKeyUsage = clientAuth" >> openss
 openssl x509 -req -in client.csr -CA root.pem -CAkey root.key -CAcreateserial -extfile ./openssl.cnf -out client.pem -days 3650
 ```
 
+## go server usage demo
+
+```go
+import "github.com/bingoohuang/gonet"
+
+// 传入服务端私钥文件，服务端证书文件，以及客户端根证书文件（可选 ，不传时不进行客户端证书校验）
+tlsConfig := gonet.TLSConfigCreateServerMust(serverKeyFile, serverPemFile, clientRootPemFile)
+addr := ":%8080"
+ln, err := tls.Listen("tcp", addr, tlsConfig)
+
+route := gin.Default()
+server := &http.Server{Addr: addr, Handler: route}
+err := server.Serve(ln)
+```
+
+## go client usage demo
+
+```go
+import "github.com/bingoohuang/gonet"
+
+// 传入客户端私钥文件，客户端证书文件，以及服务端根证书文件（可选 ，不传时不进行服务端证书校验）
+tlsClientConfig := gonet.TLSConfigCreateClientMust(c.ClientKey, c.ClientPem, c.RootPem)
+gonet.MustGet("https://httpbin.org/get").TLSClientConfig(tlsClientConfig).String()
+```
+
+具体客户端https证书使用案例，可以参见[typhon4g](https://github.com/bingoohuang/typhon4g)。
+
+
 ## Thanks
 
 1. [urllib](https://github.com/GiterLab/urllib)
