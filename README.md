@@ -33,7 +33,7 @@ import "github.com/bingoohuang/gonet"
 
 // 传入服务端私钥文件，服务端证书文件，以及客户端根证书文件（可选 ，不传时不进行客户端证书校验）
 tlsConfig := gonet.TLSConfigCreateServerMust(serverKeyFile, serverPemFile, clientRootPemFile)
-addr := ":%8080"
+addr := ":8080"
 ln, err := tls.Listen("tcp", addr, tlsConfig)
 
 route := gin.Default()
