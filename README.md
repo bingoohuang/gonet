@@ -8,6 +8,24 @@ net relative like port, http, rest.
 1. ListLocalIps
 
 
+## Make certs
+
+参见[cert_test.sh](./cert_test.sh)
+
+```bash
+openssl genrsa -out root.key 2048
+openssl req -new -nodes -x509 -days 3650 -key root.key -out root.pem -subj "/C=CN/ST=BEIJING/L=Earth/O=BJCA/OU=IT/CN=root"
+
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -out server.csr -subj "/C=CN/ST=BEIJING/L=Earth/O=BJCA/OU=IT/CN=server"
+openssl x509 -req -in server.csr -CA root.pem -CAkey root.key -CAcreateserial -out server.pem -days 3650
+
+openssl genrsa -out client.key 2048
+openssl req -new -key client.key -subj "/C=CN/ST=BEIJING/L=Earth/O=BJCA/OU=IT/CN=client" -out client.csr
+echo "[ssl_client]"> openssl.cnf; echo "extendedKeyUsage = clientAuth" >> openssl.cnf;
+openssl x509 -req -in client.csr -CA root.pem -CAkey root.key -CAcreateserial -extfile ./openssl.cnf -out client.pem -days 3650
+```
+
 ## Thanks
 
 1. [urllib](https://github.com/GiterLab/urllib)

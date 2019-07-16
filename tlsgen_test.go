@@ -3,9 +3,12 @@ package gonet
 import (
 	"bufio"
 	"crypto/tls"
+	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,7 +30,6 @@ func TestTlsCertsGenv1(t *testing.T) {
 	create("v1/root.pem", "", "v1/server.key", "v1/server.pem", "", "", t)
 	// 客户端不校验服务端证书，服务端校验客户端证书
 	create("", "v1/root.pem", "v1/server.key", "v1/server.pem", "v1/client.key", "v1/client.pem", t)
-
 }
 
 func TestTlsCertsGenv2(t *testing.T) {
@@ -40,6 +42,25 @@ func TestTlsCertsGenv2(t *testing.T) {
 	create("v2/root.pem", "v2/root.pem",
 		"v2/server.key", "v2/server.pem",
 		"v2/client.key", "v2/client.pem", t)
+}
+
+func execCertTest() {
+	cmd := exec.Command("/bin/bash", "-c", "./cert_test.sh")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("cmd.Run() failed with %s\n", err)
+	}
+	fmt.Printf("combined out:\n%s\n", string(out))
+}
+
+func TestTlsCertsGenv3(t *testing.T) {
+	assert.Nil(t, os.MkdirAll("v3", 0777))
+	defer os.RemoveAll("v3")
+	execCertTest()
+
+	create("v3/root.pem", "v3/root.pem",
+		"v3/server.key", "v3/server.pem",
+		"v3/client.key", "v3/client.pem", t)
 }
 
 func create(serverRootCA, clientRoot, serverKey, serverCrt, clientKey, clientCrt string, t *testing.T) {
