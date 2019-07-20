@@ -1,11 +1,22 @@
 # gonet
 
+[![Build Status](https://travis-ci.org/bingoohuang/gonet.svg?branch=master)](https://travis-ci.org/bingoohuang/gonet)
+
+
 net relative like port, http, rest.
 
-1. FreePort
-1. Get/Post/Put/Patch/Delete
-1. TLS relatives
-1. ListLocalIps
+1. FreePort 获得系统当前自由TCP端口（没有被占用）
+1. Get/Post/Put/Patch/Delete HTTP 客户端调用
+1. TLS relatives HTTPS证书
+    
+    * 根密钥/根证书生成
+    * 服务端密钥/服务器证书生成
+    * 客户端密钥/客户端证书生成
+    * 服务端TLSConfig(https，客户端证书校验)
+    * 客户端TLSConfig(服务器端证书校验，传递客户端证书)
+    
+1. ListLocalIps 列出本地IP及网卡名称
+1. ReverseProxy 反向代理
 
 
 ## Make certs
