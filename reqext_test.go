@@ -9,7 +9,7 @@ import (
 
 type GetRsp struct {
 	Origin string `json:"origin"`
-	Url    string `json:"url"`
+	URL    string `json:"url"`
 }
 
 func TestRestGet(t *testing.T) {
@@ -17,5 +17,5 @@ func TestRestGet(t *testing.T) {
 	url := `https://httpbin.org/get`
 	err := gonet.RestGet(url, &rsp)
 	assert.Nil(t, err)
-	assert.Equal(t, url, rsp.Url)
+	assert.Equal(t, url, rsp.URL)
 }

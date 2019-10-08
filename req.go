@@ -343,28 +343,22 @@ func (b *HTTPReq) SendOut() (*http.Response, error) {
 			buf.WriteString(url.QueryEscape(v))
 			buf.WriteByte('&')
 		}
-		paramBody = buf.String()
-		paramBody = paramBody[0 : len(paramBody)-1]
+		paramBody = buf.String()[0 : buf.Len()-1]
 	}
 
+	var err error
 	b.buildURL(paramBody)
-	u, err := url.Parse(b.url)
-	if err != nil {
+	if b.req.URL, err = url.Parse(b.url); err != nil {
 		return nil, err
 	}
 
-	b.req.URL = u
-
 	trans := b.setting.Transport
-
 	if trans == nil {
-		// create default transport
-		trans = &http.Transport{
-			TLSClientConfig: b.setting.TLSClientConfig,
-			Proxy:           b.setting.Proxy,
-			DialContext:     TimeoutDialer(b.setting.ConnectTimeout, b.setting.ReadWriteTimeout),
+		trans = &http.Transport{TLSClientConfig: b.setting.TLSClientConfig,
+			Proxy:       b.setting.Proxy,
+			DialContext: TimeoutDialer(b.setting.ConnectTimeout, b.setting.ReadWriteTimeout),
 		}
-	} else if t, ok := trans.(*http.Transport); ok { // if b.transport is *http.Transport then set the settings.
+	} else if t, ok := trans.(*http.Transport); ok {
 		if t.TLSClientConfig == nil {
 			t.TLSClientConfig = b.setting.TLSClientConfig
 		}
@@ -390,11 +384,9 @@ func (b *HTTPReq) SendOut() (*http.Response, error) {
 	}
 
 	if b.setting.ShowDebug {
-		dump, err := httputil.DumpRequest(b.req, b.setting.DumpBody)
-		if err != nil {
+		if b.dump, err = httputil.DumpRequest(b.req, b.setting.DumpBody); err != nil {
 			log.Println(err.Error())
 		}
-		b.dump = dump
 	}
 	return client.Do(b.req)
 }

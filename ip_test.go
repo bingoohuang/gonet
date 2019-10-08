@@ -6,6 +6,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestListLocalIPMap(t *testing.T) {
+	a := assert.New(t)
+	a.True(len(ListLocalIPMap()) > 0, "ListLocalIPMap")
+}
+
+func TestListLocalIps(t *testing.T) {
+	a := assert.New(t)
+	a.True(len(ListLocalIps()) > 0, "ListLocalIps")
+}
+
 func TestIsIP(t *testing.T) {
 	a := assert.New(t)
 	a.True(IsIP("192.168.0.1"), "192.168.0.1是IPv4地址")
