@@ -15,7 +15,7 @@ net relative like port, http, rest.
     * 服务端TLSConfig(https，客户端证书校验)
     * 客户端TLSConfig(服务器端证书校验，传递客户端证书)
     
-1. ListLocalIps 列出本地IP及网卡名称
+1. ListLocalIfaceAddrs, ListLocalIps, ListLocalIPMap 列出本地IP及网卡名称
 1. ReverseProxy 反向代理
 
 
