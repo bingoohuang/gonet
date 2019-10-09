@@ -9,6 +9,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// IsLocalAddr 判断addr（ip，域名等）是否指向本机
+// 由于IP可能经由iptable指向，或者可能是域名，或者其它，不能直接与本机IP做对比
+// 本方法构建一个临时的HTTP服务，然后使用指定的addr去连接改HTTP服务，如果能连接上，说明addr是指向本机的地址
 func IsLocalAddr(addr string) (bool, error) {
 	port, err := FreePort()
 	if err != nil {

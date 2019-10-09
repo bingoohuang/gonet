@@ -17,6 +17,7 @@ net relative like port, http, rest.
     
 1. ListLocalIfaceAddrs, ListLocalIps, ListLocalIPMap 列出本地IP及网卡名称
 1. ReverseProxy 反向代理
+1. IsLocalAddr 判断addr（ip，域名等）是否指向本机
 
 
 ## Make certs
