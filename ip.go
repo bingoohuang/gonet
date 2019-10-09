@@ -19,6 +19,17 @@ func IsIP4(ipv4 string) bool {
 	return ip != nil && ip.To4() != nil
 }
 
+// ListLocalIPMap 列出本机的IP地址Map
+func ListLocalIPMap() map[string]bool {
+	m := make(map[string]bool)
+	ifaces, _ := ListLocalIfaceAddrs()
+	for _, ifa := range ifaces {
+		m[ifa.IP] = true
+	}
+
+	return m
+}
+
 // ListLocalIps 列出本机的IP地址列表
 func ListLocalIps() []string {
 	ips := make([]string, 0)
