@@ -74,6 +74,71 @@ func TLSConfigCreateClient(clientKeyFile, clientCertFile, serverRootCA string) (
 	return c, nil
 }
 
+func TLSConfigCreateClientBytesMust(clientKeyFile, clientCertFile, serverRootCA []byte) *tls.Config {
+	if c, e := TLSConfigCreateClientBytes(clientKeyFile, clientCertFile, serverRootCA); e != nil {
+		panic("failed to create TLSConfigCreateClient " + e.Error())
+	} else {
+		return c
+	}
+}
+
+func TLSConfigCreateClientBytes(clientKeyFile, clientCertFile, serverRootCA []byte) (*tls.Config, error) {
+	c := &tls.Config{}
+	if len(serverRootCA) == 0 {
+		c.InsecureSkipVerify = true // #nosec G402
+	} else {
+		rootCA, err := TLSLoadPerm(serverRootCA)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read clientCertBytes %s, error %v", string(serverRootCA), err)
+		}
+
+		c.RootCAs = x509.NewCertPool()
+		c.RootCAs.AddCert(rootCA)
+
+		SkipHostnameVerification(c)
+	}
+
+	if len(clientKeyFile) > 0 && len(clientCertFile) > 0 {
+		cert, err := tls.X509KeyPair(clientCertFile, clientKeyFile)
+		if err != nil {
+			return nil, err
+		}
+
+		c.Certificates = []tls.Certificate{cert}
+	}
+
+	return c, nil
+}
+
+func TLSConfigCreateServerBytes(serverKeyFile, serverCertFile, clientRootCA []byte) *tls.Config {
+	if c, e := TLSConfigCreateServerBytesMust(serverKeyFile, serverCertFile, clientRootCA); e != nil {
+		panic("failed to create TLSConfigCreateServer " + e.Error())
+	} else {
+		return c
+	}
+}
+
+func TLSConfigCreateServerBytesMust(serverKeyFile, serverCertFile, clientRootCA []byte) (*tls.Config, error) {
+	cert, err := tls.X509KeyPair(serverCertFile, serverKeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &tls.Config{Certificates: []tls.Certificate{cert}}
+	if len(clientRootCA) > 0 {
+		rootCA, err := TLSLoadPerm(clientRootCA)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read clientCert %s, error %v", string(clientRootCA), err)
+		}
+
+		c.ClientAuth = tls.RequireAndVerifyClientCert
+		c.ClientCAs = x509.NewCertPool()
+		c.ClientCAs.AddCert(rootCA)
+	}
+
+	return c, nil
+}
+
 // nolint
 // https://github.com/digitalbitbox/bitbox-wallet-app/blob/b04bd07852d5b37939da75b3555b5a1e34a976ee/backend/coins/btc/electrum/electrum.go#L76-L111
 func SkipHostnameVerification(c *tls.Config) {
@@ -120,6 +185,18 @@ func TLSLoadPermFile(rootCAFile string) (*x509.Certificate, error) {
 		return nil, err
 	}
 	block, _ := pem.Decode(caStr)
+	if block == nil {
+		return nil, err
+	}
+	if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
+		return nil, fmt.Errorf("decode ca block file fail")
+	}
+
+	return x509.ParseCertificate(block.Bytes)
+}
+
+func TLSLoadPerm(rootCAFile []byte) (*x509.Certificate, error) {
+	block, _ := pem.Decode(rootCAFile)
 	if block == nil {
 		return nil, err
 	}
