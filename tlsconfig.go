@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"time"
 )
@@ -198,7 +199,7 @@ func TLSLoadPermFile(rootCAFile string) (*x509.Certificate, error) {
 func TLSLoadPerm(rootCAFile []byte) (*x509.Certificate, error) {
 	block, _ := pem.Decode(rootCAFile)
 	if block == nil {
-		return nil, err
+		return nil, errors.New("decode ca file error")
 	}
 	if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
 		return nil, fmt.Errorf("decode ca block file fail")
