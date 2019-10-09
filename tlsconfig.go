@@ -111,15 +111,15 @@ func TLSConfigCreateClientBytes(clientKeyFile, clientCertFile, serverRootCA []by
 	return c, nil
 }
 
-func TLSConfigCreateServerBytes(serverKeyFile, serverCertFile, clientRootCA []byte) *tls.Config {
-	if c, e := TLSConfigCreateServerBytesMust(serverKeyFile, serverCertFile, clientRootCA); e != nil {
+func TLSConfigCreateServerBytesMust(serverKeyFile, serverCertFile, clientRootCA []byte) *tls.Config {
+	if c, e := TLSConfigCreateServerBytes(serverKeyFile, serverCertFile, clientRootCA); e != nil {
 		panic("failed to create TLSConfigCreateServer " + e.Error())
 	} else {
 		return c
 	}
 }
 
-func TLSConfigCreateServerBytesMust(serverKeyFile, serverCertFile, clientRootCA []byte) (*tls.Config, error) {
+func TLSConfigCreateServerBytes(serverKeyFile, serverCertFile, clientRootCA []byte) (*tls.Config, error) {
 	cert, err := tls.X509KeyPair(serverCertFile, serverKeyFile)
 	if err != nil {
 		return nil, err
