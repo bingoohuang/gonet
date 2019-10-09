@@ -5,9 +5,10 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 func TLSConfigCreateServerMust(serverKeyFile, serverCertFile, clientRootCA string) *tls.Config {
