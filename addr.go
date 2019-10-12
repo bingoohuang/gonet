@@ -13,6 +13,15 @@ import (
 // 由于IP可能经由iptable指向，或者可能是域名，或者其它，不能直接与本机IP做对比
 // 本方法构建一个临时的HTTP服务，然后使用指定的addr去连接改HTTP服务，如果能连接上，说明addr是指向本机的地址
 func IsLocalAddr(addr string) (bool, error) {
+	if addr == "127.0.0.1" {
+		return true, nil
+	}
+
+	localIPMap := ListLocalIPMap()
+	if _, ok := localIPMap[addr]; ok {
+		return true, nil
+	}
+
 	port, err := FreePort()
 	if err != nil {
 		return false, err
