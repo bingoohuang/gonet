@@ -19,3 +19,12 @@ func TestRestGet(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, url, rsp.URL)
 }
+
+//func TestHTTPGet(t *testing.T) {
+//	url := "http://127.0.0.1:9901"
+//	for i := 0; i < 10000; i++ {
+//		r, _ := gonet.HTTPGet(url)
+//		fmt.Println(string(r))
+//		time.Sleep(500 * time.Millisecond)
+//	}
+//}

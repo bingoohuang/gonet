@@ -28,7 +28,6 @@ func TestGet(t *testing.T) {
 const smallfish = "smallfish"
 
 func TestSimplePost(t *testing.T) {
-
 	v := smallfish
 	req := MustPost("http://httpbin.org/post")
 	req.Param("username", v)

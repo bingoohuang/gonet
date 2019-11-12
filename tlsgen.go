@@ -170,7 +170,7 @@ func TLSGenServerPem(host string, ca *x509.Certificate, key crypto.PrivateKey) (
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	var serialNumber *big.Int
-	serialNumber, err = rand.Int(rand.Reader, serialNumberLimit)//nolint G404
+	serialNumber, err = rand.Int(rand.Reader, serialNumberLimit) //nolint G404
 	if err != nil {
 		return nil, nil, err
 	}

@@ -354,10 +354,12 @@ func (b *HTTPReq) SendOut() (*http.Response, error) {
 
 	trans := b.setting.Transport
 	if trans == nil {
-		trans = &http.Transport{TLSClientConfig: b.setting.TLSClientConfig,
+		t := &http.Transport{TLSClientConfig: b.setting.TLSClientConfig,
 			Proxy:       b.setting.Proxy,
 			DialContext: TimeoutDialer(b.setting.ConnectTimeout, b.setting.ReadWriteTimeout),
 		}
+		defer t.CloseIdleConnections() // fd leak w/o this
+		trans = t
 	} else if t, ok := trans.(*http.Transport); ok {
 		if t.TLSClientConfig == nil {
 			t.TLSClientConfig = b.setting.TLSClientConfig
@@ -476,13 +478,17 @@ func (b *HTTPReq) Response() (*http.Response, error) {
 type Dialer func(ctx context.Context, net, addr string) (c net.Conn, err error)
 
 // TimeoutDialer returns functions of connection dialer with timeout settings for http.Transport Dial field.
+// https://gist.github.com/c4milo/275abc6eccbfd88ad56ca7c77947883a
+// HTTP client with support for read and write timeouts which are missing in Go's standard library.
 func TimeoutDialer(cTimeout time.Duration, rwTimeout time.Duration) Dialer {
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 		conn, err := net.DialTimeout(network, addr, cTimeout)
 		if err != nil {
 			return conn, err
 		}
-		err = conn.SetDeadline(time.Now().Add(rwTimeout))
+		if rwTimeout > 0 {
+			err = conn.SetDeadline(time.Now().Add(rwTimeout))
+		}
 		return conn, err
 	}
 }
