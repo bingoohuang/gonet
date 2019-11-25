@@ -9,7 +9,7 @@ import (
 
 // ReverseProxy reverse proxy originalPath to targetHost with targetPath.
 // And the relative forwarding is rewritten.
-func ReverseProxy(originalPath, targetHost, targetPath string) *httputil.ReverseProxy {
+func ReverseProxy(originalPath, targetHost, targetPath string, timeout time.Duration) *httputil.ReverseProxy {
 	director := func(req *http.Request) {
 		req.URL.Scheme = "http"
 
@@ -29,7 +29,7 @@ func ReverseProxy(originalPath, targetHost, targetPath string) *httputil.Reverse
 		}
 		return nil
 	}
-	transport := &http.Transport{DialContext: TimeoutDialer(15*time.Second, 15*time.Second)}
+	transport := &http.Transport{DialContext: TimeoutDialer(timeout, timeout)}
 
 	// 更多可以参见 https://github.com/Integralist/go-reverse-proxy/blob/master/proxy/proxy.go
 	return &httputil.ReverseProxy{Director: director, ModifyResponse: modifyResponse, Transport: transport}
