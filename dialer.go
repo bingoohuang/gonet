@@ -5,48 +5,61 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"golang.org/x/net/proxy"
 )
 
-// DialFn was defined to make code more readable.
-type DialFn func(network, addr string) (c net.Conn, err error)
+// DialerTimeoutBean ...
+type DialerTimeoutBean struct {
+	ReadWriteTimeout time.Duration
+	ConnTimeout      time.Duration
+}
+
+var _ proxy.Dialer = (*DialerTimeoutBean)(nil)
+
+// DialContext ...
+func (d DialerTimeoutBean) DialContext(ctx context.Context, network, addr string) (c net.Conn, err error) {
+	dialer := &net.Dialer{Timeout: d.ConnTimeout}
+	c, err = dialer.DialContext(ctx, network, addr)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if d.ReadWriteTimeout > 0 {
+		c = &tcpConn{TCPConn: c.(*net.TCPConn), timeout: d.ReadWriteTimeout}
+	}
+
+	return c, nil
+}
+
+// Dial ...
+func (d DialerTimeoutBean) Dial(network, addr string) (c net.Conn, err error) {
+	dialer := &net.Dialer{Timeout: d.ConnTimeout}
+	c, err = dialer.Dial(network, addr)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if d.ReadWriteTimeout > 0 {
+		c = &tcpConn{TCPConn: c.(*net.TCPConn), timeout: d.ReadWriteTimeout}
+	}
+
+	return c, nil
+}
 
 // DialContextFn was defined to make code more readable.
 type DialContextFn func(ctx context.Context, network, address string) (net.Conn, error)
 
 // DialerTimeout  implements our own dialer in order to set read and write idle timeouts.
-func DialerTimeout(rwtimeout, ctimeout time.Duration) DialFn {
-	dialer := &net.Dialer{Timeout: ctimeout}
-
-	return func(network, addr string) (net.Conn, error) {
-		c, err := dialer.Dial(network, addr)
-		if err != nil {
-			return nil, err
-		}
-
-		if rwtimeout > 0 {
-			return &tcpConn{TCPConn: c.(*net.TCPConn), timeout: rwtimeout}, nil
-		}
-
-		return c, nil
-	}
+func DialerTimeout(rwtimeout, ctimeout time.Duration) func(network, addr string) (c net.Conn, err error) {
+	return DialerTimeoutBean{ReadWriteTimeout: rwtimeout, ConnTimeout: ctimeout}.Dial
 }
 
 // DialContextTimeout implements our own dialer in order to set read and write idle timeouts.
-func DialContextTimeout(rwtimeout, ctimeout time.Duration) DialContextFn {
-	dialer := &net.Dialer{Timeout: ctimeout}
-
-	return func(ctx context.Context, network, addr string) (net.Conn, error) {
-		c, err := dialer.DialContext(ctx, network, addr)
-		if err != nil {
-			return nil, err
-		}
-
-		if rwtimeout > 0 {
-			return &tcpConn{TCPConn: c.(*net.TCPConn), timeout: rwtimeout}, nil
-		}
-
-		return c, nil
-	}
+func DialContextTimeout(rwtimeout, ctimeout time.Duration) func(ctx context.Context, network, addr string) (net.Conn, error) { // nolint
+	return DialerTimeoutBean{ReadWriteTimeout: rwtimeout, ConnTimeout: ctimeout}.DialContext
 }
 
 // tcpConn is our own net.Conn which sets a read and write deadline and resets them each
