@@ -13,10 +13,16 @@ func IsIP(host string) bool {
 	return ip != nil
 }
 
-// IsIP4 是否是IPv4
-func IsIP4(ipv4 string) bool {
+// IsIPv4 是否是IPv4
+func IsIPv4(ipv4 string) bool {
 	ip := net.ParseIP(ipv4)
 	return ip != nil && ip.To4() != nil
+}
+
+// IsIPv6 tests if the str is an IPv6 format
+func IsIPv6(str string) bool {
+	ip := net.ParseIP(str)
+	return ip != nil && strings.Contains(str, ":")
 }
 
 // ListIPv4Map 列出本机的IPv4地址Map

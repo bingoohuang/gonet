@@ -42,7 +42,7 @@ func IsLocalAddr(addr string) (bool, error) {
 		exitChan <- true
 	}()
 
-	url := fmt.Sprintf("http://%s:%d", addr, port)
+	url := `http://` + JoinHostPort(addr, port)
 	resp, err := HTTPGet(url)
 
 	if e := server.Close(); e != nil {
@@ -60,6 +60,15 @@ func IsLocalAddr(addr string) (bool, error) {
 	}
 
 	return string(resp) == radStr, nil
+}
+
+// JoinHostPort make IP:Port for ipv4/domain or [IPv6]:Port for ipv6.
+func JoinHostPort(host string, port int) string {
+	if IsIPv6(host) {
+		return fmt.Sprintf("[%s]:%d", host, port)
+	}
+
+	return fmt.Sprintf("%s:%d", host, port)
 }
 
 // https://stackoverflow.com/a/31832326
