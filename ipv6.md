@@ -129,3 +129,46 @@ Here is the check list to meet:
 HAProxy compilation requirements
 First of all, HAProxy must be compiled with the option TPROXY enabled.
 It is enabled by default when you use the target LINUX26 or LINUX2628.
+
+
+## MySQL driver
+
+golang driver [TCP via IPv6](https://github.com/go-sql-driver/mysql)
+
+`user:password@tcp([de:ad:be:ef::ca:fe]:80)/dbname?timeout=90s&collation=utf8mb4_unicode_ci`
+
+java driver ipv4
+
+```java
+urlString = "jdbc:mysql://10.144.1.216:3306/dbName";
+Class.forName(driver);
+DriverManager.setLoginTimeout(getConnectionTimeOut());
+dbConnection = DriverManager.getConnection(urlString,user,password);
+```
+
+[java driver ipv6](http://blog.ashwani.co.in/blog/2012-10-10/mysql-with-ipv6/)
+
+```java
+urlString = "jdbc:mysql://address=(protocol=tcp)(host=fe80::5ed6:baff:fe14:a23e)(port=3306)/db";
+```
+
+## MySQL Server
+
+[bind_address](https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_bind_address)
+
+Property |	Value
+---|---
+Command-Line Format	| --bind-address=addr
+System Variable	| bind_address
+Scope	|Global
+Dynamic	|No
+Type	|String
+Default Value	|*
+
+The MySQL server listens on a single network socket for TCP/IP connections. This socket is bound to a single address, but it is possible for an address to map onto multiple network interfaces. To specify an address, set bind_address=addr at server startup, where addr is an IPv4 or IPv6 address or a host name. If addr is a host name, the server resolves the name to an IP address and binds to that address. If a host name resolves to multiple IP addresses, the server uses the first IPv4 address if there are any, or the first IPv6 address otherwise.
+
+The server treats different types of addresses as follows:
+
+1. If the address is *, the server accepts TCP/IP connections on all server host IPv4 interfaces, and, if the server host supports IPv6, on all IPv6 interfaces. Use this address to permit both IPv4 and IPv6 connections on all server interfaces. This value is the default.
+1. If the address is 0.0.0.0, the server accepts TCP/IP connections on all server host IPv4 interfaces.
+1. If the address is ::, the server accepts TCP/IP connections on all server host IPv4 and IPv6 interfaces.
