@@ -11,21 +11,24 @@ import (
 	"github.com/pkg/errors"
 )
 
-func TLSConfigCreateServerMust(serverKeyFile, serverCertFile, clientRootCA string) *tls.Config {
-	if c, e := TLSConfigCreateServer(serverKeyFile, serverCertFile, clientRootCA); e != nil {
+// TLSConfigCreateServer ...
+func TLSConfigCreateServer(serverKeyFile, serverCertFile, clientRootCA string) *tls.Config {
+	if c, e := TLSConfigCreateServerE(serverKeyFile, serverCertFile, clientRootCA); e != nil {
 		panic("failed to create TLSConfigCreateServer " + e.Error())
 	} else {
 		return c
 	}
 }
 
-func TLSConfigCreateServer(serverKeyFile, serverCertFile, clientRootCA string) (*tls.Config, error) {
+// TLSConfigCreateServerE ...
+func TLSConfigCreateServerE(serverKeyFile, serverCertFile, clientRootCA string) (*tls.Config, error) {
 	cert, err := tls.LoadX509KeyPair(serverCertFile, serverKeyFile)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &tls.Config{Certificates: []tls.Certificate{cert}}
+
 	if clientRootCA != "" {
 		rootCA, err := TLSLoadPermFile(clientRootCA)
 		if err != nil {
@@ -40,15 +43,17 @@ func TLSConfigCreateServer(serverKeyFile, serverCertFile, clientRootCA string) (
 	return c, nil
 }
 
-func TLSConfigCreateClientMust(clientKeyFile, clientCertFile, serverRootCA string) *tls.Config {
-	if c, e := TLSConfigCreateClient(clientKeyFile, clientCertFile, serverRootCA); e != nil {
+// TLSConfigCreateClient ...
+func TLSConfigCreateClient(clientKeyFile, clientCertFile, serverRootCA string) *tls.Config {
+	if c, e := TLSConfigCreateClientE(clientKeyFile, clientCertFile, serverRootCA); e != nil {
 		panic("failed to create TLSConfigCreateClient " + e.Error())
 	} else {
 		return c
 	}
 }
 
-func TLSConfigCreateClient(clientKeyFile, clientCertFile, serverRootCA string) (*tls.Config, error) {
+// TLSConfigCreateClientE ...
+func TLSConfigCreateClientE(clientKeyFile, clientCertFile, serverRootCA string) (*tls.Config, error) {
 	c := &tls.Config{}
 	if serverRootCA == "" {
 		c.InsecureSkipVerify = true // #nosec G402
@@ -76,15 +81,17 @@ func TLSConfigCreateClient(clientKeyFile, clientCertFile, serverRootCA string) (
 	return c, nil
 }
 
-func TLSConfigCreateClientBytesMust(clientKeyFile, clientCertFile, serverRootCA []byte) *tls.Config {
-	if c, e := TLSConfigCreateClientBytes(clientKeyFile, clientCertFile, serverRootCA); e != nil {
+// TLSConfigCreateClientBytes ...
+func TLSConfigCreateClientBytes(clientKeyFile, clientCertFile, serverRootCA []byte) *tls.Config {
+	if c, e := TLSConfigCreateClientBytesE(clientKeyFile, clientCertFile, serverRootCA); e != nil {
 		panic("failed to create TLSConfigCreateClient " + e.Error())
 	} else {
 		return c
 	}
 }
 
-func TLSConfigCreateClientBytes(clientKeyFile, clientCertFile, serverRootCA []byte) (*tls.Config, error) {
+// TLSConfigCreateClientBytesE ...
+func TLSConfigCreateClientBytesE(clientKeyFile, clientCertFile, serverRootCA []byte) (*tls.Config, error) {
 	c := &tls.Config{}
 	if len(serverRootCA) == 0 {
 		c.InsecureSkipVerify = true // #nosec G402
@@ -112,21 +119,24 @@ func TLSConfigCreateClientBytes(clientKeyFile, clientCertFile, serverRootCA []by
 	return c, nil
 }
 
-func TLSConfigCreateServerBytesMust(serverKeyFile, serverCertFile, clientRootCA []byte) *tls.Config {
-	if c, e := TLSConfigCreateServerBytes(serverKeyFile, serverCertFile, clientRootCA); e != nil {
+// TLSConfigCreateServerBytes ....
+func TLSConfigCreateServerBytes(serverKeyFile, serverCertFile, clientRootCA []byte) *tls.Config {
+	if c, e := TLSConfigCreateServerBytesE(serverKeyFile, serverCertFile, clientRootCA); e != nil {
 		panic("failed to create TLSConfigCreateServer " + e.Error())
 	} else {
 		return c
 	}
 }
 
-func TLSConfigCreateServerBytes(serverKeyFile, serverCertFile, clientRootCA []byte) (*tls.Config, error) {
+// TLSConfigCreateServerBytesE ...
+func TLSConfigCreateServerBytesE(serverKeyFile, serverCertFile, clientRootCA []byte) (*tls.Config, error) {
 	cert, err := tls.X509KeyPair(serverCertFile, serverKeyFile)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &tls.Config{Certificates: []tls.Certificate{cert}}
+
 	if len(clientRootCA) > 0 {
 		rootCA, err := TLSLoadPerm(clientRootCA)
 		if err != nil {
@@ -141,6 +151,7 @@ func TLSConfigCreateServerBytes(serverKeyFile, serverCertFile, clientRootCA []by
 	return c, nil
 }
 
+// SkipHostnameVerification ...
 // nolint
 // https://github.com/digitalbitbox/bitbox-wallet-app/blob/b04bd07852d5b37939da75b3555b5a1e34a976ee/backend/coins/btc/electrum/electrum.go#L76-L111
 func SkipHostnameVerification(c *tls.Config) {
@@ -181,15 +192,19 @@ func SkipHostnameVerification(c *tls.Config) {
 	}
 }
 
+// TLSLoadPermFile ...
 func TLSLoadPermFile(rootCAFile string) (*x509.Certificate, error) {
 	caStr, err := ioutil.ReadFile(rootCAFile)
 	if err != nil {
 		return nil, err
 	}
+
 	block, _ := pem.Decode(caStr)
+
 	if block == nil {
 		return nil, err
 	}
+
 	if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
 		return nil, fmt.Errorf("decode ca block file fail")
 	}
@@ -197,11 +212,13 @@ func TLSLoadPermFile(rootCAFile string) (*x509.Certificate, error) {
 	return x509.ParseCertificate(block.Bytes)
 }
 
+// TLSLoadPerm ...
 func TLSLoadPerm(rootCAFile []byte) (*x509.Certificate, error) {
 	block, _ := pem.Decode(rootCAFile)
 	if block == nil {
 		return nil, errors.New("decode ca file error")
 	}
+
 	if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
 		return nil, fmt.Errorf("decode ca block file fail")
 	}

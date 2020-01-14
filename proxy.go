@@ -27,6 +27,7 @@ func ReverseProxy(originalPath, targetHost, targetPath string, timeout time.Dura
 			basePath := strings.TrimRight(originalPath, targetPath)
 			r.Header.Set("Location", basePath+respLocationHeader)
 		}
+
 		return nil
 	}
 	transport := &http.Transport{DialContext: TimeoutDialer(timeout, timeout)}

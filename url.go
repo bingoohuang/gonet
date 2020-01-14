@@ -8,6 +8,7 @@ func BuildURL(base string, queryParams map[string]string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	q := u.Query()
 
 	for k, v := range queryParams {
@@ -15,5 +16,6 @@ func BuildURL(base string, queryParams map[string]string) (string, error) {
 	}
 
 	u.RawQuery = q.Encode()
+
 	return u.String(), nil
 }

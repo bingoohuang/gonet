@@ -89,13 +89,13 @@ func (c *tcpConn) Write(b []byte) (int, error) {
 func DefaultClient() *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
-			DialContext:           DialContextTimeout(30*time.Second, 10*time.Second),
+			DialContext:           DialContextTimeout(30*time.Second, 10*time.Second), // nolint gomnd
 			Proxy:                 http.ProxyFromEnvironment,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       30 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-			ResponseHeaderTimeout: 10 * time.Second,
+			MaxIdleConns:          100,              // nolint gomnd
+			IdleConnTimeout:       30 * time.Second, // nolint gomnd
+			TLSHandshakeTimeout:   10 * time.Second, // nolint gomnd
+			ExpectContinueTimeout: 1 * time.Second,  // nolint gomnd
+			ResponseHeaderTimeout: 10 * time.Second, // nolint gomnd
 		},
 	}
 }

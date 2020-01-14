@@ -36,6 +36,7 @@ func RestPost(url string, req interface{}, rsp interface{}) ([]byte, error) {
 	return NewReqOption().RestPostFn(url, req, rsp, nil)
 }
 
+// RestPostFn ...
 func (s *ReqOption) RestPostFn(url string, req interface{}, rsp interface{}, fn func(*HTTPReq)) ([]byte, error) {
 	resp, err := s.Post(url)
 	if err != nil {
@@ -78,6 +79,7 @@ func (s *ReqOption) MustGet(url string) *HTTPReq {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	return req
 }
 
@@ -102,6 +104,7 @@ func (s *ReqOption) MustPost(url string) *HTTPReq {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	return req
 }
 
@@ -126,6 +129,7 @@ func (s *ReqOption) MustPut(url string) *HTTPReq {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	return req
 }
 
@@ -150,6 +154,7 @@ func (s *ReqOption) MustDelete(url string) *HTTPReq {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	return req
 }
 
@@ -174,6 +179,7 @@ func (s *ReqOption) MustHead(url string) *HTTPReq {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	return req
 }
 
@@ -198,5 +204,6 @@ func (s *ReqOption) MustPatch(url string) *HTTPReq {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	return req
 }

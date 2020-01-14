@@ -29,6 +29,7 @@ func TestGetFreePort(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
 	if port == 0 {
 		t.Error("port == 0")
 	}
@@ -38,18 +39,22 @@ func TestGetFreePort(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
 	defer l.Close()
 }
 
 func TestGetFreePorts(t *testing.T) {
 	count := 3
 	ports, err := FreePorts(count)
+
 	if err != nil {
 		t.Error(err)
 	}
+
 	if len(ports) == 0 {
 		t.Error("len(ports) == 0")
 	}
+
 	for _, port := range ports {
 		if port == 0 {
 			t.Error("port == 0")
@@ -65,6 +70,6 @@ func TestGetFreePorts(t *testing.T) {
 }
 
 func TestFindFreePortFrom(t *testing.T) {
-	p := FindFreePortFrom(1024)
-	assert.True(t, p >= 1024)
+	p := FindFreePortFrom(1024) // nolint gomnd
+	assert.True(t, p >= 1024)   // nolint gomnd
 }

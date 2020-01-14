@@ -17,6 +17,7 @@ import (
 	"time"
 )
 
+// TLSGenRootFiles ...
 func TLSGenRootFiles(path, outKey, outPem string) error {
 	_, rootKey, rootDerBytes, e := TLSGenRootPem()
 	if e != nil {
@@ -30,6 +31,7 @@ func TLSGenRootFiles(path, outKey, outPem string) error {
 	return certToFile(filepath.Join(path, outPem), rootDerBytes)
 }
 
+// TLSGenServerFiles ...
 func TLSGenServerFiles(path, rootKey, rootPem, host, outKey, outPem string) error {
 	rootPrivate, ca, e := TLSLoadKeyPair(path, rootPem, rootKey)
 	if e != nil {
@@ -48,6 +50,7 @@ func TLSGenServerFiles(path, rootKey, rootPem, host, outKey, outPem string) erro
 	return certToFile(filepath.Join(path, outPem), derBytes)
 }
 
+// TLSGenClientFiles ...
 func TLSGenClientFiles(path, rootKey, rootPem, outKey, outPem string) error {
 	rootPrivate, ca, e := TLSLoadKeyPair(path, rootPem, rootKey)
 	if e != nil {
@@ -66,7 +69,8 @@ func TLSGenClientFiles(path, rootKey, rootPem, outKey, outPem string) error {
 	return certToFile(filepath.Join(path, outPem), derBytes)
 }
 
-func TLSGenAll(path, host string) error {
+// TLSGenAll ...
+func TLSGenAll(path, host string) error { // nolint funlen
 	ca, rootKey, rootPrivate, err := TLSGenRootPem()
 	if err != nil {
 		return err
@@ -75,6 +79,7 @@ func TLSGenAll(path, host string) error {
 	if err := keyToFile(filepath.Join(path, "root.key"), rootKey); err != nil {
 		return err
 	}
+
 	if err := certToFile(filepath.Join(path, "root.pem"), rootPrivate); err != nil {
 		return err
 	}
@@ -87,10 +92,13 @@ func TLSGenAll(path, host string) error {
 	if err := keyToFile(filepath.Join(path, "server.key"), leafKey); err != nil {
 		return err
 	}
+
 	if err := certToFile(filepath.Join(path, "server.pem"), leafPem); err != nil {
 		return err
 	}
+
 	clientKey, clientPem, e := TLSGenClientPem(ca, rootKey)
+
 	if e != nil {
 		return e
 	}
@@ -98,6 +106,7 @@ func TLSGenAll(path, host string) error {
 	if err := keyToFile(filepath.Join(path, "client.key"), clientKey); err != nil {
 		return err
 	}
+
 	if err := certToFile(filepath.Join(path, "client.pem"), clientPem); err != nil {
 		return err
 	}
@@ -127,23 +136,30 @@ func TLSGenAll(path, host string) error {
 	return nil
 }
 
+// TLSLoadKeyPair ...
 func TLSLoadKeyPair(path string, rootPem string, rootKey string) (crypto.PrivateKey, *x509.Certificate, error) {
 	cert, err := tls.LoadX509KeyPair(filepath.Join(path, rootPem), filepath.Join(path, rootKey))
 	if err != nil {
 		return nil, nil, err
 	}
+
 	rootPrivateKey := cert.PrivateKey
 	ca, err := x509.ParseCertificate(cert.Certificate[0])
+
 	return rootPrivateKey, ca, err
 }
 
+// TLSGenRootPem ...
 func TLSGenRootPem() (*x509.Certificate, *ecdsa.PrivateKey, []byte, error) {
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)     // nolint gomnd
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit) //nolint G404
+
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
 	rootKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -159,17 +175,21 @@ func TLSGenRootPem() (*x509.Certificate, *ecdsa.PrivateKey, []byte, error) {
 		IsCA:                  true,
 	}
 	derBytes, err := x509.CreateCertificate(rand.Reader, rootTemplate, rootTemplate, &rootKey.PublicKey, rootKey)
+
 	return rootTemplate, rootKey, derBytes, err
 }
 
+// TLSGenServerPem ...
 func TLSGenServerPem(host string, ca *x509.Certificate, key crypto.PrivateKey) (*ecdsa.PrivateKey, []byte, error) {
 	leafKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128) // nolint gomnd
+
 	var serialNumber *big.Int
+
 	serialNumber, err = rand.Int(rand.Reader, serialNumberLimit) //nolint G404
 	if err != nil {
 		return nil, nil, err
@@ -186,28 +206,35 @@ func TLSGenServerPem(host string, ca *x509.Certificate, key crypto.PrivateKey) (
 		IsCA:                  false,
 	}
 	hosts := strings.Split(host, ",")
+
 	for _, h := range hosts {
 		if h == "" {
 			continue
 		}
+
 		if ip := net.ParseIP(h); ip != nil {
 			leafTemplate.IPAddresses = append(leafTemplate.IPAddresses, ip)
 		} else {
 			leafTemplate.DNSNames = append(leafTemplate.DNSNames, h)
 		}
 	}
+
 	var derBytes []byte
+
 	derBytes, err = x509.CreateCertificate(rand.Reader, &leafTemplate, ca, &leafKey.PublicKey, key)
+
 	return leafKey, derBytes, err
 }
 
+// TLSGenClientPem ...
 func TLSGenClientPem(rootCA *x509.Certificate, rootPrivate crypto.PrivateKey) (*ecdsa.PrivateKey, []byte, error) {
 	clientKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	clientTemplate := x509.Certificate{
-		SerialNumber:          new(big.Int).SetInt64(4),
+		SerialNumber:          new(big.Int).SetInt64(4), // nolint gomnd
 		Subject:               pkix.Name{Organization: []string{"BJCA"}, CommonName: "client"},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Date(2049, 12, 31, 23, 59, 59, 0, time.UTC),
@@ -216,8 +243,11 @@ func TLSGenClientPem(rootCA *x509.Certificate, rootPrivate crypto.PrivateKey) (*
 		BasicConstraintsValid: true,
 		IsCA:                  false,
 	}
+
 	var derBytes []byte
+
 	derBytes, err = x509.CreateCertificate(rand.Reader, &clientTemplate, rootCA, &clientKey.PublicKey, rootPrivate)
+
 	return clientKey, derBytes, err
 }
 
@@ -228,6 +258,7 @@ func keyToFile(filename string, key *ecdsa.PrivateKey) error {
 		return err
 	}
 	defer file.Close()
+
 	b, err := x509.MarshalECPrivateKey(key)
 	if err != nil {
 		//fmt.Fprintf(os.Stderr, "Unable to marshal ECDSA private key: %v", err)
@@ -243,9 +274,11 @@ func certToFile(filename string, derBytes []byte) error {
 		//log.Fatalf("failed to open cert.pem for writing: %s", err)
 		return err
 	}
+
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
 		// log.Fatalf("failed to write data to cert.pem: %s", err)
 		return err
 	}
+
 	return certOut.Close()
 }

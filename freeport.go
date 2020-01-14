@@ -13,6 +13,7 @@ func IsPortFree(port int) bool {
 		fmt.Println(err)
 		return false
 	}
+
 	_ = l.Close()
 
 	return true
@@ -26,6 +27,7 @@ func FreePort() (int, error) {
 	}
 
 	_ = l.Close()
+
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
@@ -36,6 +38,7 @@ func MustFreePort() int {
 	if err != nil {
 		panic(err)
 	}
+
 	return port
 }
 
@@ -44,7 +47,7 @@ func MustFreePortStr() string {
 	return strconv.Itoa(MustFreePort())
 }
 
-// FreePort asks the kernel for free open ports that are ready to use.
+// FreePorts asks the kernel for free open ports that are ready to use.
 func FreePorts(count int) ([]int, error) {
 	ports := make([]int, count)
 
@@ -70,5 +73,6 @@ func FindFreePortFrom(starting int) int {
 	p := starting
 	for ; !IsPortFree(p); p++ {
 	}
+
 	return p
 }

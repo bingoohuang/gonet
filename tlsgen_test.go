@@ -47,9 +47,11 @@ func TestTlsCertsGenv2(t *testing.T) {
 func execCertTest() {
 	cmd := exec.Command("/bin/bash", "-c", "./cert_test.sh")
 	out, err := cmd.CombinedOutput()
+
 	if err != nil {
 		log.Fatalf("cmd.Run() failed with %s\n", err)
 	}
+
 	fmt.Printf("combined out:\n%s\n", string(out))
 }
 
@@ -64,9 +66,10 @@ func TestTlsCertsGenv3(t *testing.T) {
 }
 
 func create(serverRootCA, clientRoot, serverKey, serverCrt, clientKey, clientCrt string, t *testing.T) {
-	tlsConfig := TLSConfigCreateServerMust(serverKey, serverCrt, clientRoot)
+	tlsConfig := TLSConfigCreateServer(serverKey, serverCrt, clientRoot)
 	portStr := MustFreePortStr()
 	ln, err := tls.Listen("tcp", ":"+portStr, tlsConfig)
+
 	if err != nil {
 		assert.Error(t, err)
 		return
@@ -78,6 +81,7 @@ func create(serverRootCA, clientRoot, serverKey, serverCrt, clientKey, clientCrt
 			assert.Error(t, err)
 			return
 		}
+
 		handleConn(conn, t)
 	}()
 
@@ -85,7 +89,7 @@ func create(serverRootCA, clientRoot, serverKey, serverCrt, clientKey, clientCrt
 }
 
 func client(serverRootCA, clientKey, clientCrt string, portStr string, t *testing.T) {
-	conn, err := tls.Dial("tcp", "127.0.0.1:"+portStr, TLSConfigCreateClientMust(clientKey, clientCrt, serverRootCA))
+	conn, err := tls.Dial("tcp", "127.0.0.1:"+portStr, TLSConfigCreateClient(clientKey, clientCrt, serverRootCA))
 	assert.Nil(t, err)
 
 	defer conn.Close()
@@ -106,6 +110,7 @@ func handleConn(conn net.Conn, t *testing.T) {
 	msg, err := r.ReadString('\n')
 	assert.Nil(t, err)
 	println(msg)
+
 	_, err = conn.Write([]byte("world\n"))
 	assert.Nil(t, err)
 }

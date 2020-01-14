@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Query execute influxQl (refer to https://docs.influxdata.com/influxdb/v1.7/query_language)
+// InfluxQuery Query execute influxQl (refer to https://docs.influxdata.com/influxdb/v1.7/query_language)
 // influxDBAddr  InfluxDB的连接地址， 例如http://localhost:8086, 注意：1. 右边没有/ 2. 右边不带其它path，例如/query等。
 func InfluxQuery(influxDBAddr, influxQl string) (string, error) {
 	req, err := Get(influxDBAddr + `/query`)
@@ -29,6 +29,7 @@ func InfluxWrite(influxDBWriteAddr, line string) (*http.Response, string, error)
 	if err != nil {
 		return nil, "", err
 	}
+
 	req.Body([]byte(line))
 
 	rsp, err := req.SendOut()
@@ -37,6 +38,7 @@ func InfluxWrite(influxDBWriteAddr, line string) (*http.Response, string, error)
 	}
 
 	rspBody, err := req.ReadResponseBody(rsp)
+
 	return rsp, string(rspBody), err
 }
 
@@ -48,11 +50,13 @@ func LineProtocol(name string, tags map[string]string, fields map[string]interfa
 	}
 
 	tagKeys := make([]string, 0, len(tags))
+
 	for k, v := range tags {
 		if k != "" && v != "" {
 			tagKeys = append(tagKeys, k)
 		}
 	}
+
 	sort.Strings(tagKeys)
 
 	tagstr := ""
@@ -61,19 +65,23 @@ func LineProtocol(name string, tags map[string]string, fields map[string]interfa
 	}
 
 	fieldKeys := make([]string, 0, len(fields))
+
 	for k, v := range fields {
 		if k != "" && v != nil {
 			fieldKeys = append(fieldKeys, k)
 		}
 	}
+
 	sort.Strings(fieldKeys)
 
 	out := ""
+
 	for _, k := range fieldKeys {
 		repr, err := toInfluxRepr(fields[k])
 		if err != nil {
 			return "", err
 		}
+
 		out += fmt.Sprintf(",%s=%s", escapeSpecialChars(k), repr)
 	}
 
@@ -89,6 +97,7 @@ func escapeSpecialChars(in string) string {
 	str := strings.Replace(in, ",", `\,`, -1)
 	str = strings.Replace(str, "=", `\=`, -1)
 	str = strings.Replace(str, " ", `\ `, -1)
+
 	return str
 }
 
@@ -113,8 +122,9 @@ func toInfluxRepr(val interface{}) (string, error) {
 }
 
 func stringToInfluxRepr(v string) (string, error) {
-	if len(v) > 64000 {
+	if len(v) > 64000 { // nolint gomnd
 		return "", fmt.Errorf("string too long (%d characters, max. 64K)", len(v))
 	}
+
 	return fmt.Sprintf("%q", v), nil
 }

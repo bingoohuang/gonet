@@ -14,6 +14,7 @@ type GetRsp struct {
 
 func TestRestGet(t *testing.T) {
 	var rsp GetRsp
+
 	url := `https://httpbin.org/get`
 	err := gonet.RestGet(url, &rsp)
 	assert.Nil(t, err)

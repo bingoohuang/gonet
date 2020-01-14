@@ -1,19 +1,34 @@
 package gonet
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
+func TestListIfaces(t *testing.T) {
+	ifaces, err := ListIfaces()
+	assert.Nil(t, err)
+	fmt.Printf("%+v\n", ifaces)
+
+	ifaces, err = ListIfaces(IPv4)
+	assert.Nil(t, err)
+	fmt.Printf("%+v\n", ifaces)
+
+	ifaces, err = ListIfaces(IPv6)
+	assert.Nil(t, err)
+	fmt.Printf("%+v\n", ifaces)
+}
+
 func TestListLocalIPMap(t *testing.T) {
 	a := assert.New(t)
-	a.True(len(ListLocalIPMap()) > 0, "ListLocalIPMap")
+	a.True(len(ListIpsv4()) > 0, "ListLocalIPMap")
 }
 
 func TestListLocalIps(t *testing.T) {
 	a := assert.New(t)
-	a.True(len(ListLocalIps()) > 0, "ListLocalIps")
+	a.True(len(ListIpsv4()) > 0, "ListLocalIps")
 }
 
 func TestIsIP(t *testing.T) {
