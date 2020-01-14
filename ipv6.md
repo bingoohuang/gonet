@@ -106,3 +106,26 @@ frontend http-in
 You must add the transparant option. Otherwise, haproxy will not start if the VIP is not on the machine itself. (kind of like nonlocal.bind sysctl).
 
 > haproxy is intelligent enough to understand the port number in the address. No need to screw around with brackets like `[2a02:123:45:67bb::1]:80` or special options.
+
+
+
+## [haproxy Transparent Proxy](https://www.haproxy.com/blog/howto-transparent-proxying-and-binding-with-haproxy-and-aloha-load-balancer/)  
+
+### Transparent Proxy
+
+Here comes the transparent proxy mode: HAProxy can be configured to spoof the client IP address when establishing the TCP connection to the server. That way, the server thinks the connection comes from the client directly (of course, the server must answer back to HAProxy and not to the client, otherwise it can’t work: the client will get an acknowledge from the server IP while it has established the connection on HAProxy‘s IP).
+
+HAProxy and the Linux Kernel
+Unfortunately, HAProxy can’t do transparent binding or proxying alone. It must stand on a compiled and tuned Linux Kernel and operating system.
+Below, I’ll explain how to do this in a standard Linux distribution.
+Here is the check list to meet:
+1. appropriate HAProxy compilation option
+2. appropriate Linux Kernel compilation option
+3. sysctl settings
+4. iptables rules
+5. ip route rules
+6. HAProxy configuration
+
+HAProxy compilation requirements
+First of all, HAProxy must be compiled with the option TPROXY enabled.
+It is enabled by default when you use the target LINUX26 or LINUX2628.
