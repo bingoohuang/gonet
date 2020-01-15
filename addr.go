@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 // IsLocalAddr 判断addr（ip，域名等）是否指向本机
@@ -34,29 +31,15 @@ func IsLocalAddr(addr string) (bool, error) {
 	})
 
 	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux}
-	exitChan := make(chan bool)
 
-	go func() {
-		err := server.ListenAndServe()
-		logrus.Infof("ListenAndServe %v", err)
-		exitChan <- true
-	}()
+	go func() { _ = server.ListenAndServe() }()
 
-	url := `http://` + JoinHostPort(addr, port)
-	resp, err := HTTPGet(url)
+	resp, err := HTTPGet(`http://` + JoinHostPort(addr, port))
 
-	if e := server.Close(); e != nil {
-		logrus.Warnf("Close %v", err)
-	}
+	_ = server.Close()
 
 	if err != nil {
-		logrus.Warnf("HTTPGet %v", err)
 		return false, err
-	}
-
-	select {
-	case <-time.After(10 * time.Second): // nolint gomnd
-	case <-exitChan:
 	}
 
 	return string(resp) == radStr, nil

@@ -15,7 +15,15 @@ func TestIsLocal(t *testing.T) {
 	assert.Nil(t, error)
 	assert.True(t, local)
 
-	local, error = IsLocalAddr("unkownhost")
+	//local, error = IsLocalAddr("fe80::c0b:c8d7:5739:2605")
+	//assert.Nil(t, error)
+	//assert.True(t, local)
+	//
+	//local, error = IsLocalAddr("192.168.162.108")
+	//assert.Nil(t, error)
+	//assert.True(t, local)
+
+	local, error = IsLocalAddr("unknown.host")
 	assert.NotNil(t, error)
 	assert.False(t, local)
 }
