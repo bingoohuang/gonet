@@ -14,10 +14,9 @@ func IsLocalAddr(addr string) (bool, error) {
 		return true, nil
 	}
 
-	localIPMap := ListIPMap()
-	if _, ok := localIPMap[addr]; ok {
-		return true, nil
-	}
+	//if _, ok := ListIPMap()[addr]; ok {
+	//	return true, nil
+	//}
 
 	port, err := FreePort()
 	if err != nil {
