@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"time"
 )
 
 // IsLocalAddr 判断addr（ip，域名等）是否指向本机
@@ -14,9 +15,9 @@ func IsLocalAddr(addr string) (bool, error) {
 		return true, nil
 	}
 
-	//if _, ok := ListIPMap()[addr]; ok {
-	//	return true, nil
-	//}
+	if _, ok := ListIPMap()[addr]; ok {
+		return true, nil
+	}
 
 	port, err := FreePort()
 	if err != nil {
@@ -33,6 +34,7 @@ func IsLocalAddr(addr string) (bool, error) {
 
 	go func() { _ = server.ListenAndServe() }()
 
+	time.Sleep(100 * time.Millisecond)
 	resp, err := HTTPGet(`http://` + JoinHostPort(addr, port))
 
 	_ = server.Close()
