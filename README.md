@@ -83,3 +83,4 @@ gonet.MustGet("https://httpbin.org/get").TLSClientConfig(tlsClientConfig).String
 1. [A simple zero-config tool to make locally trusted development certificates with any names you'd like.](https://github.com/FiloSottile/mkcert)
 1. [Go 编程: 快速生成自签名证书与双向认证(mTLS)](https://mp.weixin.qq.com/s/0jUf1y2CamBrmSbYik-x1w)，[本地拷贝版本](cert.md)
 1. [CFSSL从根证书，到业务侧证书一键生成](https://github.com/cloudflare/cfssl)
+1. [A simple, modern and secure encryption tool with small explicit keys, no config options, and UNIX-style composability.](https://github.com/FiloSottile/age)
