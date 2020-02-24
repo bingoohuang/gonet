@@ -19,11 +19,7 @@ func (s *ReqOption) RestGet(url string, v interface{}) error {
 		return err
 	}
 
-	if err := req.ToJSON(v); err != nil {
-		return err
-	}
-
-	return nil
+	return req.ToJSON(v)
 }
 
 // RestGet 发起一次HTTP GET调用，并且反序列化JSON到v代表的指针中。

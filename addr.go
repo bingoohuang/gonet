@@ -34,7 +34,8 @@ func IsLocalAddr(addr string) (bool, error) {
 
 	go func() { _ = server.ListenAndServe() }()
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond) // nolint gomnd
+
 	resp, err := HTTPGet(`http://` + JoinHostPort(addr, port))
 
 	_ = server.Close()
