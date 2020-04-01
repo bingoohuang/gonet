@@ -274,3 +274,14 @@ func TestMan6(t *testing.T) {
 	assert.True(t, ok)
 	assert.NotNil(t, e)
 }
+
+func TestQuery(t *testing.T) {
+	u := gonet.QueryURL("http://a.b.c", "k", "v", "k2", "v2")
+	assert.Equal(t, gonet.URL("http://a.b.c?k=v&k2=v2"), u)
+
+	u = gonet.QueryURL("http://a.b.c?a=b", "k", "v", "k2")
+	assert.Equal(t, gonet.URL("http://a.b.c?a=b&k=v&k2="), u)
+
+	u = gonet.QueryURL("http://a.b.c?a=b", "k", " ", "k2", "黄进兵")
+	assert.Equal(t, gonet.URL("http://a.b.c?a=b&k=+&k2=%E9%BB%84%E8%BF%9B%E5%85%B5"), u)
+}

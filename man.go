@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"reflect"
 	"strings"
 	"time"
@@ -642,4 +643,24 @@ type DumpRequestLogger interface {
 type DumpResponseLogger interface {
 	// Dump logs the dmp
 	Dump(dump []byte)
+}
+
+// QueryURL comoses the GET url with query arguments
+func QueryURL(baseURL string, kvs ...string) URL {
+	u, _ := url.Parse(baseURL)
+	q, _ := url.ParseQuery(u.RawQuery)
+
+	for i := 0; i < len(kvs); i += 2 {
+		k, v := kvs[i], ""
+
+		if i+1 < len(kvs) {
+			v = kvs[i+1]
+		}
+
+		q.Add(k, v)
+	}
+
+	u.RawQuery = q.Encode()
+
+	return URL(u.String())
 }
