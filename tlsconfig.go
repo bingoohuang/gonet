@@ -6,10 +6,26 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"time"
 
 	"github.com/pkg/errors"
 )
+
+// NewHTTPSTestServer news a test https server.
+func NewHTTPSTestServer(handler http.Handler, serverCertFile, serverKeyFile string) (*httptest.Server, error) {
+	cert, err := tls.LoadX509KeyPair(serverCertFile, serverKeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	ts := httptest.NewUnstartedServer(handler)
+	ts.TLS = &tls.Config{Certificates: []tls.Certificate{cert}}
+	ts.StartTLS()
+
+	return ts, nil
+}
 
 // TLSConfigCreateServer ...
 func TLSConfigCreateServer(serverKeyFile, serverCertFile, clientRootCA string) *tls.Config {
@@ -44,6 +60,7 @@ func TLSConfigCreateServerE(serverKeyFile, serverCertFile, clientRootCA string) 
 }
 
 // TLSConfigCreateClient ...
+// if serverRootCA is empty, the client will will not check the root CA of client.
 func TLSConfigCreateClient(clientKeyFile, clientCertFile, serverRootCA string) *tls.Config {
 	if c, e := TLSConfigCreateClientE(clientKeyFile, clientCertFile, serverRootCA); e != nil {
 		panic("failed to create TLSConfigCreateClient " + e.Error())

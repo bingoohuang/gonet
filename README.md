@@ -18,14 +18,14 @@ type Result struct {
 }
 
 type poster struct {
-    gonet.T `method:"POST"`
+	gonet.T `method:"POST"`
 
 
 	AddAgent func(gonet.URL, Agent) Result
     Upload func(gonet.URL, gonet.UploadFile, map[string]string) Result
-    Download func(gonet.URL, *gonet.DownloadFile) error
+	Download func(gonet.URL, *gonet.DownsloadFile) error
 
-	GetAgent func(gonet.URL) Agent `method:"GET"
+	GetAgent func(gonet.URL) Agent `method:"GET"`
 }
 
 var man = func() *poster {
@@ -37,9 +37,10 @@ var man = func() *poster {
 	return p
 }()
 
-
-result := man.AddAgent(gonet.URL("http://127.0.0.1:8888"), agentAgent{Name: "bingoo"})
-
+func main() {
+    result := man.AddAgent(gonet.URL("http://127.0.0.1:8888"), agentAgent{Name: "bingoo"})
+	// ...
+}
 
 ```
 

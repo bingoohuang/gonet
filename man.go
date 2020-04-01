@@ -59,6 +59,14 @@ func MakeFile(filenameKey, filename string, reader io.Reader) UploadFile {
 	return UploadFile{FilenameKey: filenameKey, Filename: filename, Reader: reader}
 }
 
+// TLS specifies the TLS configuration for the client.
+type TLS string
+
+// MakeTLS makes a TLS configuration for the client
+func MakeTLS(clientKeyFile, clientCertFile, serverRootCA string) TLS {
+	return TLS(clientKeyFile + "," + clientCertFile + "," + serverRootCA)
+}
+
 // ManOption is the options for Man.
 type ManOption struct {
 	// URL ...
@@ -72,6 +80,8 @@ type ManOption struct {
 	KeepAlive string
 	// Timeout ...
 	Timeout string
+	// TLS 	clientKeyFile,clientCertFile,serverRootCA(required=false)
+	TLS string
 
 	ErrSetter func(err error)
 	Logger    ManLogger
@@ -150,8 +160,10 @@ type generalFn func(args []reflect.Value) ([]reflect.Value, error)
 func makeFunc(option *ManOption, f StructField, numIn int, numOut int) generalFn {
 	return func(args []reflect.Value) ([]reflect.Value, error) {
 		method := gotOption(methodType, "method", option.Method, f, numIn, args)
+		tls := gotOption(tlsType, "tls", option.TLS, f, numIn, args)
 		dumpOption := gotOption(nil, "dump", option.Method, f, numIn, args)
 		inputs := gotInputs(f, numIn, args)
+
 		//keepAlive := gotKeepAlive(option, f, numIn, args)
 		timeout := gotOption(timeoutType, "timeout", option.Timeout, f, numIn, args)
 		timeoutDuration, err := time.ParseDuration(timeout)
@@ -160,12 +172,12 @@ func makeFunc(option *ManOption, f StructField, numIn int, numOut int) generalFn
 			return nil, fmt.Errorf("failed to parse timeout %s error: %v", timeout, err)
 		}
 
-		url, err := parseURL(args, option, f, numIn)
+		u, err := parseURL(args, option, f, numIn)
 		if err != nil {
 			return nil, err
 		}
 
-		rsp, err := do(inputs, method, url, dumpOption, option, timeoutDuration)
+		rsp, err := do(tls, inputs, method, u, dumpOption, option, timeoutDuration)
 		if err != nil {
 			return nil, err
 		}
@@ -193,7 +205,7 @@ func makeFunc(option *ManOption, f StructField, numIn int, numOut int) generalFn
 	}
 }
 
-func do(inputs []reflect.Value, method, url, dumpOption string,
+func do(tls string, inputs []reflect.Value, method, url, dumpOption string,
 	option *ManOption, timeoutDuration time.Duration) (*http.Response, error) {
 	body, contentType, isFileUpload, err := parseBodyContentType(inputs)
 	if err != nil {
@@ -211,7 +223,7 @@ func do(inputs []reflect.Value, method, url, dumpOption string,
 
 	dumpReq(dumpOption, req, isFileUpload, option)
 
-	c := &http.Client{Transport: transport(timeoutDuration)}
+	c := &http.Client{Transport: transport(timeoutDuration, tls)}
 
 	return c.Do(req)
 }
@@ -368,7 +380,7 @@ func processOut(f StructField, res *http.Response) ([]reflect.Value, error) {
 	return []reflect.Value{outVPtr.Elem()}, nil
 }
 
-func transport(timeout time.Duration) *http.Transport {
+func transport(timeout time.Duration, tlsConfig string) *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -384,8 +396,17 @@ func transport(timeout time.Duration) *http.Transport {
 		DisableKeepAlives:   true,
 		MaxIdleConnsPerHost: -1,
 
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint gosec
+		TLSClientConfig: parseTLSConfig(tlsConfig),
 	}
+}
+
+func parseTLSConfig(tlsConfig string) *tls.Config {
+	c := strings.SplitN(tlsConfig, ",", 3) // clientKeyFile,clientCertFile,serverRootCA
+	if len(c) != 3 {                       // nolint gomnd
+		return &tls.Config{InsecureSkipVerify: true} // nolint gosec
+	}
+
+	return TLSConfigCreateClient(c[1], c[2], c[3])
 }
 
 func gotInputs(f StructField, numIn int, args []reflect.Value) []reflect.Value {
@@ -449,7 +470,7 @@ func makeOption(structValue *StructValue, manv reflect.Value, optionFns []ManOpt
 		_, o.Timeout = findOption(keepAliveType, "timeout", "90s", structValue, manv)
 	}
 
-	createErrorSetter(manv, o)
+	createErrorSetter(o)
 	createLogger(manv, o)
 
 	return o
@@ -537,11 +558,12 @@ var (
 	methodType    = reflect.TypeOf((*Method)(nil)).Elem()
 	stringType    = reflect.TypeOf((*string)(nil)).Elem()
 	manLoggerType = reflect.TypeOf((*ManLogger)(nil)).Elem()
+	tlsType       = reflect.TypeOf((*TLS)(nil)).Elem()
 )
 
 func inputType(t reflect.Type) bool {
 	switch t {
-	case methodType, urlType, timeoutType, keepAliveType, dlFilePtrType:
+	case methodType, urlType, timeoutType, keepAliveType, dlFilePtrType, tlsType:
 		return false
 	}
 
@@ -560,38 +582,13 @@ func (k KeepAlive) IsKeepAlive() bool {
 	}
 }
 
-func createErrorSetter(v reflect.Value, option *ManOption) {
-	for i := 0; i < v.NumField(); i++ {
-		fv := v.Field(i)
-		f := v.Type().Field(i)
-
-		if f.PkgPath != "" /* not exportable? */ {
-			continue
-		}
-
-		if !gor.IsError(f.Type) {
-			continue
-		}
-
-		option.ErrSetter = func(err error) {
-			if fv.IsNil() && err == nil {
-				return
-			}
-
-			if err == nil {
-				fv.Set(reflect.Zero(f.Type))
-			} else {
-				fv.Set(reflect.ValueOf(err))
-			}
-		}
-
-		return
-	}
-
+func createErrorSetter(option *ManOption) {
 	option.ErrSetter = func(err error) {
-		if err != nil {
-			logrus.Warnf("error occurred %v", err)
+		if err == nil {
+			return
 		}
+
+		logrus.Warnf("error occurred %v", err)
 	}
 }
 

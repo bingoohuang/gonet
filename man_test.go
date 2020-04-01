@@ -250,31 +250,6 @@ func TestMan5(t *testing.T) {
 	assert.NotNil(t, e)
 }
 
-type Poster6 struct {
-	Error error
-
-	Download func(gonet.URL, *gonet.DownloadFile)
-}
-
-// nolint gochecknoglobals
-var man6 = func() *Poster6 {
-	p := &Poster6{}
-	if err := gonet.NewMan(p); err != nil {
-		panic(err)
-	}
-
-	return p
-}()
-
-func TestMan6(t *testing.T) {
-	man6.Download("http://127.0.0.1:8123", nil)
-	assert.NotNil(t, man6.Error)
-
-	e, ok := man6.Error.(*url.Error)
-	assert.True(t, ok)
-	assert.NotNil(t, e)
-}
-
 func TestQuery(t *testing.T) {
 	u := gonet.QueryURL("http://a.b.c", "k", "v", "k2", "v2")
 	assert.Equal(t, gonet.URL("http://a.b.c?k=v&k2=v2"), u)

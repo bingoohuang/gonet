@@ -45,7 +45,7 @@ func TestTlsCertsGenv2(t *testing.T) {
 }
 
 func execCertTest() {
-	cmd := exec.Command("/bin/bash", "-c", "./cert_test.sh")
+	cmd := exec.Command("/bin/bash", "-c", "testdata/cert_test.sh")
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
