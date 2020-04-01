@@ -9,7 +9,7 @@ import (
 
 type GetRsp struct {
 	Origin string `json:"origin"`
-	URL    string `json:"url"`
+	URL    string `json:"URL"`
 }
 
 func TestRestGet(t *testing.T) {
@@ -22,9 +22,9 @@ func TestRestGet(t *testing.T) {
 }
 
 //func TestHTTPGet(t *testing.T) {
-//	url := "http://127.0.0.1:9901"
+//	URL := "http://127.0.0.1:9901"
 //	for i := 0; i < 10000; i++ {
-//		r, _ := gonet.HTTPGet(url)
+//		r, _ := gonet.HTTPGet(URL)
 //		fmt.Println(string(r))
 //		time.Sleep(500 * time.Millisecond)
 //	}

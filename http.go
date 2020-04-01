@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"io"
 	"mime"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -96,4 +97,11 @@ func ContentTypeHTML(w http.ResponseWriter) {
 // ContentTypeJSON ...
 func ContentTypeJSON(w http.ResponseWriter) {
 	w.Header().Set(ContentType, "application/json; charset=utf-8")
+}
+
+// IsTimeoutError tells that the err is a timeout error.
+func IsTimeoutError(err error) bool {
+	e, ok := err.(net.Error)
+
+	return ok && e.Timeout()
 }

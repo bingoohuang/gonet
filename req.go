@@ -59,7 +59,7 @@ func NewReqOption() *ReqOption {
 	}
 }
 
-// Req return *HTTPReq with specific method
+// Req return *HTTPReq with specific Method
 func (s *ReqOption) Req(rawURL, method string) (*HTTPReq, error) {
 	var resp http.Response
 
@@ -89,7 +89,7 @@ func (s *ReqOption) Req(rawURL, method string) (*HTTPReq, error) {
 	}, nil
 }
 
-// HTTPReq provides more useful methods for requesting one url than http.Request.
+// HTTPReq provides more useful methods for requesting one URL than http.Request.
 type HTTPReq struct {
 	url     string
 	req     *http.Request
@@ -162,7 +162,7 @@ func (b *HTTPReq) Timeout(connectTimeout, readWriteTimeout time.Duration) *HTTPR
 	return b
 }
 
-// TLSClientConfig sets tls connection configurations if visiting https url.
+// TLSClientConfig sets tls connection configurations if visiting https URL.
 func (b *HTTPReq) TLSClientConfig(config *tls.Config) *HTTPReq {
 	b.setting.TLSClientConfig = config
 
@@ -217,8 +217,8 @@ func (b *HTTPReq) Transport(transport http.RoundTripper) *HTTPReq {
 // Proxy set http proxy
 // example:
 //
-//	func(req *http.Request) (*url.URL, error) {
-// 		u, _ := url.ParseRequestURI("http://127.0.0.1:8118")
+//	func(req *http.Request) (*URL.URL, error) {
+// 		u, _ := URL.ParseRequestURI("http://127.0.0.1:8118")
 // 		return u, nil
 // 	}
 func (b *HTTPReq) Proxy(proxy func(*http.Request) (*url.URL, error)) *HTTPReq {
@@ -280,7 +280,7 @@ func (b *HTTPReq) JSONBody(obj interface{}) error {
 }
 
 func (b *HTTPReq) buildURL(paramBody string) {
-	// build GET url with query string
+	// build GET URL with query string
 	m := b.req.Method
 	if m == "GET" && paramBody != "" {
 		if strings.Contains(b.url, "?") {
@@ -292,7 +292,7 @@ func (b *HTTPReq) buildURL(paramBody string) {
 		return
 	}
 
-	// build POST/PUT/PATCH url and body
+	// build POST/PUT/PATCH URL and body
 	if (m == "POST" || m == "PUT" || m == "PATCH") && b.req.Body == nil {
 		// with files
 		if len(b.files) > 0 {

@@ -3,7 +3,47 @@
 [![Build Status](https://travis-ci.org/bingoohuang/gonet.svg?branch=master)](https://travis-ci.org/bingoohuang/gonet)
 
 
-net relative like port, http, rest.
+## Declarative HTTP requests.
+
+```go
+import "github.com/bingoohuang/gonet"
+
+
+type Agent struct {
+	Name string `json:"name"`
+}
+
+type Result struct {
+	State   int    `json:"state"`
+}
+
+type poster struct {
+    gonet.T `method:"POST"`
+
+
+	AddAgent func(gonet.URL, Agent) Result
+    Upload func(gonet.URL, gonet.UploadFile, map[string]string) Result
+    Download func(gonet.URL, *gonet.DownloadFile) error
+
+	GetAgent func(gonet.URL) Agent `method:"GET"
+}
+
+var man = func() *poster {
+	p := &poster{}
+	if err := gonet.NewMan(p); err != nil {
+		panic(err)
+	}
+
+	return p
+}()
+
+
+result := man.AddAgent(gonet.URL("http://127.0.0.1:8888"), agentAgent{Name: "bingoo"})
+
+
+```
+
+## net relative like port, http, rest.
 
 1. FreePort 获得系统当前自由TCP端口（没有被占用）
 1. Get/Post/Put/Patch/Delete HTTP 客户端调用
