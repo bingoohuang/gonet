@@ -1,4 +1,4 @@
-package gonet
+package freeport
 
 import (
 	"fmt"
@@ -19,8 +19,8 @@ func IsPortFree(port int) bool {
 	return true
 }
 
-// FreePort asks the kernel for a free open port that is ready to use.
-func FreePort() (int, error) {
+// PortE asks the kernel for a free open port that is ready to use.
+func PortE() (int, error) {
 	l, e := ListenPort(0)
 	if e != nil {
 		return 0, e
@@ -31,10 +31,10 @@ func FreePort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
-// MustFreePort is deprecated, use FreePort instead
+// Port is deprecated, use PortE instead
 // Ask the kernel for a free open port that is ready to use
-func MustFreePort() int {
-	port, err := FreePort()
+func Port() int {
+	port, err := PortE()
 	if err != nil {
 		panic(err)
 	}
@@ -42,13 +42,13 @@ func MustFreePort() int {
 	return port
 }
 
-// MustFreePortStr get a free port as string.
-func MustFreePortStr() string {
-	return strconv.Itoa(MustFreePort())
+// PortStr get a free port as string.
+func PortStr() string {
+	return strconv.Itoa(Port())
 }
 
-// FreePorts asks the kernel for free open ports that are ready to use.
-func FreePorts(count int) ([]int, error) {
+// Ports asks the kernel for free open ports that are ready to use.
+func Ports(count int) ([]int, error) {
 	ports := make([]int, count)
 
 	for i := 0; i < count; i++ {
@@ -68,8 +68,8 @@ func ListenPort(port int) (net.Listener, error) {
 	return net.Listen("tcp", fmt.Sprintf(":%d", port))
 }
 
-// FindFreePortFrom finds a free port from starting port
-func FindFreePortFrom(starting int) int {
+// FindPortFrom finds a free port from starting port
+func FindPortFrom(starting int) int {
 	p := starting
 	for ; !IsPortFree(p); p++ {
 	}

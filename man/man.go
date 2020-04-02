@@ -1,4 +1,4 @@
-package gonet
+package man
 
 import (
 	"bytes"
@@ -12,9 +12,14 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/bingoohuang/gonet"
+
+	"github.com/bingoohuang/gonet/tlsconf"
 
 	"github.com/sirupsen/logrus"
 
@@ -59,16 +64,16 @@ func MakeFile(filenameKey, filename string, reader io.Reader) UploadFile {
 	return UploadFile{FilenameKey: filenameKey, Filename: filename, Reader: reader}
 }
 
-// TLS specifies the TLS configuration for the client.
-type TLS string
+// TLSConfFiles specifies the TLS configuration files for the client.
+// like client.key,client.pem,root.pem
+type TLSConfFiles string
 
-// MakeTLS makes a TLS configuration for the client
-func MakeTLS(clientKeyFile, clientCertFile, serverRootCA string) TLS {
-	return TLS(clientKeyFile + "," + clientCertFile + "," + serverRootCA)
-}
+// TLSConfDir specifies the TLSFiles configuration files directly for the client.
+// like client.key,client.pem,root.pem
+type TLSConfDir string
 
-// ManOption is the options for Man.
-type ManOption struct {
+// Option is the options for Man.
+type Option struct {
 	// URL ...
 	URL string
 
@@ -80,18 +85,19 @@ type ManOption struct {
 	KeepAlive string
 	// Timeout ...
 	Timeout string
-	// TLS 	clientKeyFile,clientCertFile,serverRootCA(required=false)
-	TLS string
+	// TLSConfFiles like clientKeyFile,clientCertFile,serverRootCA(required=false)
+	TLSConfFiles string
+	TLSConfDir   string
 
 	ErrSetter func(err error)
-	Logger    ManLogger
+	Logger    Logger
 }
 
-// ManOptionFn is the func prototype for ManOption.
-type ManOptionFn func(*ManOption)
+// OptionFn is the func prototype for Option.
+type OptionFn func(*Option)
 
-// NewMan makes a new Man for http requests.
-func NewMan(man interface{}, optionFns ...ManOptionFn) error {
+// New makes a new Man for http requests.
+func New(man interface{}, optionFns ...OptionFn) error {
 	v := reflect.ValueOf(man)
 	if v.Kind() != reflect.Ptr {
 		return fmt.Errorf("man1 shoud be a pointer")
@@ -116,7 +122,7 @@ func NewMan(man interface{}, optionFns ...ManOptionFn) error {
 	return nil
 }
 
-func createFn(option *ManOption, f StructField) error {
+func createFn(option *Option, f StructField) error {
 	numIn := f.Type.NumIn()
 	numOut := f.Type.NumOut()
 
@@ -157,10 +163,11 @@ func createFn(option *ManOption, f StructField) error {
 
 type generalFn func(args []reflect.Value) ([]reflect.Value, error)
 
-func makeFunc(option *ManOption, f StructField, numIn int, numOut int) generalFn {
+func makeFunc(option *Option, f StructField, numIn int, numOut int) generalFn {
 	return func(args []reflect.Value) ([]reflect.Value, error) {
 		method := gotOption(methodType, "method", option.Method, f, numIn, args)
-		tls := gotOption(tlsType, "tls", option.TLS, f, numIn, args)
+		tlsConfDir := gotOption(tlsConfDirType, "tlsConfDir", option.TLSConfFiles, f, numIn, args)
+		tlsConfFiles := gotOption(tlsConfFilesType, "tlsConfFiles", option.TLSConfDir, f, numIn, args)
 		dumpOption := gotOption(nil, "dump", option.Method, f, numIn, args)
 		inputs := gotInputs(f, numIn, args)
 
@@ -177,7 +184,7 @@ func makeFunc(option *ManOption, f StructField, numIn int, numOut int) generalFn
 			return nil, err
 		}
 
-		rsp, err := do(tls, inputs, method, u, dumpOption, option, timeoutDuration)
+		rsp, err := httpClientDo(tlsConfDir, tlsConfFiles, inputs, method, u, dumpOption, option, timeoutDuration)
 		if err != nil {
 			return nil, err
 		}
@@ -205,8 +212,8 @@ func makeFunc(option *ManOption, f StructField, numIn int, numOut int) generalFn
 	}
 }
 
-func do(tls string, inputs []reflect.Value, method, url, dumpOption string,
-	option *ManOption, timeoutDuration time.Duration) (*http.Response, error) {
+func httpClientDo(tlsConfDir, tlsConfFiles string, inputs []reflect.Value, method, url, dumpOption string,
+	option *Option, timeoutDuration time.Duration) (*http.Response, error) {
 	body, contentType, isFileUpload, err := parseBodyContentType(inputs)
 	if err != nil {
 		return nil, err
@@ -218,30 +225,30 @@ func do(tls string, inputs []reflect.Value, method, url, dumpOption string,
 	}
 
 	if contentType != "" {
-		req.Header.Set(ContentType, contentType)
+		req.Header.Set(gonet.ContentType, contentType)
 	}
 
 	dumpReq(dumpOption, req, isFileUpload, option)
 
-	c := &http.Client{Transport: transport(timeoutDuration, tls)}
+	c := &http.Client{Transport: transport(timeoutDuration, tlsConfDir, tlsConfFiles)}
 
 	return c.Do(req)
 }
 
-func parseURL(args []reflect.Value, option *ManOption, f StructField, numIn int) (string, error) {
-	url := gotOption(urlType, "url", option.URL, f, numIn, args)
-	if url == "" && option.urlField.IsValid() {
-		url = option.urlField.Convert(stringType).Interface().(string)
+func parseURL(args []reflect.Value, option *Option, f StructField, numIn int) (string, error) {
+	u := gotOption(urlType, "u", option.URL, f, numIn, args)
+	if u == "" && option.urlField.IsValid() {
+		u = option.urlField.Convert(stringType).Interface().(string)
 	}
 
-	if url == "" {
+	if u == "" {
 		return "", fmt.Errorf("URL not specified")
 	}
 
-	return url, nil
+	return u, nil
 }
 
-func dumpRsp(dumpOption string, rsp *http.Response, dlValue reflect.Value, option *ManOption) {
+func dumpRsp(dumpOption string, rsp *http.Response, dlValue reflect.Value, option *Option) {
 	if !strings.Contains(dumpOption, "rsp") {
 		return
 	}
@@ -260,7 +267,7 @@ func dumpRsp(dumpOption string, rsp *http.Response, dlValue reflect.Value, optio
 	logrus.Infof("Response:\n%s\n", d)
 }
 
-func dumpReq(dumpOption string, req *http.Request, isFileUpload bool, option *ManOption) {
+func dumpReq(dumpOption string, req *http.Request, isFileUpload bool, option *Option) {
 	if !strings.Contains(dumpOption, "req") {
 		return
 	}
@@ -366,21 +373,33 @@ func findInputByType(inputs []reflect.Value, typ reflect.Type) reflect.Value {
 func processOut(f StructField, res *http.Response) ([]reflect.Value, error) {
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return nil, fmt.Errorf("unexpected status code %d with  response %s",
-			res.StatusCode, string(ReadBytes(res.Body)))
+			res.StatusCode, string(gonet.ReadBytes(res.Body)))
 	}
 
+	bodyBytes := gonet.ReadBytes(res.Body)
 	outType := f.Type.Out(0)
-	outVPtr := reflect.New(outType)
-	bodyBytes := ReadBytes(res.Body)
 
-	if err := json.Unmarshal(bodyBytes, outVPtr.Interface()); err != nil {
-		return nil, err
+	switch outType.Kind() {
+	case reflect.Struct:
+		outVPtr := reflect.New(outType)
+		if err := json.Unmarshal(bodyBytes, outVPtr.Interface()); err != nil {
+			return nil, err
+		}
+
+		return []reflect.Value{outVPtr.Elem()}, nil
+	case reflect.String:
+		return []reflect.Value{reflect.ValueOf(string(bodyBytes))}, nil
+	default:
+		any, err := gor.CastAny(string(bodyBytes), outType)
+		if err != nil {
+			return nil, err
+		}
+
+		return []reflect.Value{any}, nil
 	}
-
-	return []reflect.Value{outVPtr.Elem()}, nil
 }
 
-func transport(timeout time.Duration, tlsConfig string) *http.Transport {
+func transport(timeout time.Duration, tlsConfDir, tlsConfFiles string) *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -396,17 +415,26 @@ func transport(timeout time.Duration, tlsConfig string) *http.Transport {
 		DisableKeepAlives:   true,
 		MaxIdleConnsPerHost: -1,
 
-		TLSClientConfig: parseTLSConfig(tlsConfig),
+		TLSClientConfig: parseTLSConfig(tlsConfDir, tlsConfFiles),
 	}
 }
 
-func parseTLSConfig(tlsConfig string) *tls.Config {
-	c := strings.SplitN(tlsConfig, ",", 3) // clientKeyFile,clientCertFile,serverRootCA
-	if len(c) != 3 {                       // nolint gomnd
-		return &tls.Config{InsecureSkipVerify: true} // nolint gosec
+func parseTLSConfig(tlsConfDir, tlsConfFiles string) *tls.Config {
+	c := strings.SplitN(tlsConfFiles, ",", 3) // clientKeyFile,clientCertFile,serverRootCA
+	if len(c) != 3 {                          // nolint gomnd
+		tc := &tls.Config{} // nolint gosec
+		tlsconf.SkipHostnameVerification(tc)
+
+		return tc
 	}
 
-	return TLSConfigCreateClient(c[1], c[2], c[3])
+	if tlsConfDir != "" {
+		for i, p := range c {
+			c[i] = filepath.Join(tlsConfDir, p)
+		}
+	}
+
+	return tlsconf.CreateClient(c[0], c[1], c[2])
 }
 
 func gotInputs(f StructField, numIn int, args []reflect.Value) []reflect.Value {
@@ -447,8 +475,8 @@ func gotOption(typ reflect.Type, tag, defaultValue string, f StructField, numIn 
 	return defaultValue
 }
 
-func makeOption(structValue *StructValue, manv reflect.Value, optionFns []ManOptionFn) *ManOption {
-	o := &ManOption{}
+func makeOption(structValue *StructValue, manv reflect.Value, optionFns []OptionFn) *Option {
+	o := &Option{}
 
 	for _, fn := range optionFns {
 		fn(o)
@@ -548,22 +576,23 @@ func (s *StructValue) FieldByIndex(index int) StructField {
 var (
 	emptyValue reflect.Value
 
-	dlFilePtrType = reflect.TypeOf((*DownloadFile)(nil))
-	paramsType    = reflect.TypeOf((*map[string]string)(nil)).Elem()
-	fileType      = reflect.TypeOf((*UploadFile)(nil)).Elem()
-	keepAliveType = reflect.TypeOf((*KeepAlive)(nil)).Elem()
-	timeoutType   = reflect.TypeOf((*Timeout)(nil)).Elem()
-	tType         = reflect.TypeOf((*T)(nil)).Elem()
-	urlType       = reflect.TypeOf((*URL)(nil)).Elem()
-	methodType    = reflect.TypeOf((*Method)(nil)).Elem()
-	stringType    = reflect.TypeOf((*string)(nil)).Elem()
-	manLoggerType = reflect.TypeOf((*ManLogger)(nil)).Elem()
-	tlsType       = reflect.TypeOf((*TLS)(nil)).Elem()
+	dlFilePtrType    = reflect.TypeOf((*DownloadFile)(nil))
+	paramsType       = reflect.TypeOf((*map[string]string)(nil)).Elem()
+	fileType         = reflect.TypeOf((*UploadFile)(nil)).Elem()
+	keepAliveType    = reflect.TypeOf((*KeepAlive)(nil)).Elem()
+	timeoutType      = reflect.TypeOf((*Timeout)(nil)).Elem()
+	tType            = reflect.TypeOf((*T)(nil)).Elem()
+	urlType          = reflect.TypeOf((*URL)(nil)).Elem()
+	methodType       = reflect.TypeOf((*Method)(nil)).Elem()
+	stringType       = reflect.TypeOf((*string)(nil)).Elem()
+	manLoggerType    = reflect.TypeOf((*Logger)(nil)).Elem()
+	tlsConfFilesType = reflect.TypeOf((*TLSConfFiles)(nil)).Elem()
+	tlsConfDirType   = reflect.TypeOf((*TLSConfDir)(nil)).Elem()
 )
 
 func inputType(t reflect.Type) bool {
 	switch t {
-	case methodType, urlType, timeoutType, keepAliveType, dlFilePtrType, tlsType:
+	case methodType, urlType, timeoutType, keepAliveType, dlFilePtrType, tlsConfFilesType, tlsConfDirType:
 		return false
 	}
 
@@ -575,14 +604,12 @@ func (k KeepAlive) IsKeepAlive() bool {
 	switch strings.ToLower(string(k)) {
 	case "false", "no", "off", "0":
 		return false
-	case "true", "yes", "on", "1":
-		return true
-	default:
+	default: // "true", "yes", "on", "1", etc.
 		return true
 	}
 }
 
-func createErrorSetter(option *ManOption) {
+func createErrorSetter(option *Option) {
 	option.ErrSetter = func(err error) {
 		if err == nil {
 			return
@@ -592,20 +619,20 @@ func createErrorSetter(option *ManOption) {
 	}
 }
 
-func createLogger(v reflect.Value, option *ManOption) {
+func createLogger(v reflect.Value, option *Option) {
 	if fv := findTypedField(v, manLoggerType); fv.IsValid() {
-		option.Logger = fv.Interface().(ManLogger)
+		option.Logger = fv.Interface().(Logger)
 		return
 	}
 
-	option.Logger = &ManLoggerNoop{}
+	option.Logger = &LoggerNoop{}
 }
 
-// ManLoggerNoop implements the interface for dao logging with NOOP.
-type ManLoggerNoop struct{}
+// LoggerNoop implements the interface for dao logging with NOOP.
+type LoggerNoop struct{}
 
 // LogError logs the error
-func (d *ManLoggerNoop) LogError(err error) { /*NOOP*/ }
+func (d *LoggerNoop) LogError(err error) { /*NOOP*/ }
 
 func findTypedField(v reflect.Value, t reflect.Type) reflect.Value {
 	for i := 0; i < v.NumField(); i++ {
@@ -624,8 +651,8 @@ func findTypedField(v reflect.Value, t reflect.Type) reflect.Value {
 	return reflect.Value{}
 }
 
-// ManLogger is the interface for http logging.
-type ManLogger interface {
+// Logger is the interface for http logging.
+type Logger interface {
 	// LogError logs the error
 	LogError(err error)
 }
@@ -642,7 +669,7 @@ type DumpResponseLogger interface {
 	Dump(dump []byte)
 }
 
-// QueryURL comoses the GET url with query arguments
+// QueryURL composes the GET url with query arguments
 func QueryURL(baseURL string, kvs ...string) URL {
 	u, _ := url.Parse(baseURL)
 	q, _ := url.ParseQuery(u.RawQuery)

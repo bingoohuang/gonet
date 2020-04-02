@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"net/http"
 	"time"
+
+	"github.com/bingoohuang/gonet/freeport"
 )
 
 // IsLocalAddr 判断addr（ip，域名等）是否指向本机
@@ -19,7 +21,7 @@ func IsLocalAddr(addr string) (bool, error) {
 		return true, nil
 	}
 
-	port, err := FreePort()
+	port, err := freeport.PortE()
 	if err != nil {
 		return false, err
 	}

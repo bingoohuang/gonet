@@ -1,14 +1,20 @@
-package gonet_test
+package man_test
 
 import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/bingoohuang/gonet/man"
+
+	"github.com/bingoohuang/gonet/tlsconf"
 
 	"github.com/bingoohuang/gonet"
 	"github.com/stretchr/testify/assert"
@@ -25,15 +31,15 @@ type Result struct {
 }
 
 type poster1 struct {
-	gonet.T `timeout:"5s" method:"POST"`
+	man.T `timeout:"5s" method:"POST"`
 
-	AddAgent func(gonet.URL, Agent) Result `dump:"req,rsp"`
+	AddAgent func(man.URL, Agent) Result `dump:"req,rsp"`
 }
 
 // nolint gochecknoglobals
 var man1 = func() *poster1 {
 	p := &poster1{}
-	if err := gonet.NewMan(p); err != nil {
+	if err := man.New(p); err != nil {
 		panic(err)
 	}
 
@@ -51,14 +57,14 @@ func TestMan1(t *testing.T) {
 		method = r.Method
 		_ = json.Unmarshal(gonet.ReadBytes(r.Body), &requestAgent)
 
-		w.Header().Set(gonet.ContentType, gonet.HeadJSON)
+		w.Header().Set(gonet.ContentType, man.HeadJSON)
 
 		jv, _ := json.Marshal(result)
 		_, _ = w.Write(jv)
 	}))
 	defer ts.Close()
 
-	result2 := man1.AddAgent(gonet.URL(ts.URL), agent)
+	result2 := man1.AddAgent(man.URL(ts.URL), agent)
 
 	assert.Equal(t, result, result2)
 	assert.Equal(t, "POST", method)
@@ -66,7 +72,7 @@ func TestMan1(t *testing.T) {
 }
 
 type Poster2 struct {
-	gonet.URL
+	man.URL
 
 	AddAgent func(Agent) Result
 }
@@ -74,7 +80,7 @@ type Poster2 struct {
 // nolint gochecknoglobals
 var man2 = func() *Poster2 {
 	p := &Poster2{}
-	if err := gonet.NewMan(p); err != nil {
+	if err := man.New(p); err != nil {
 		panic(err)
 	}
 
@@ -92,14 +98,14 @@ func TestMan2(t *testing.T) {
 		method = r.Method
 		_ = json.Unmarshal(gonet.ReadBytes(r.Body), &requestAgent)
 
-		w.Header().Set(gonet.ContentType, gonet.HeadJSON)
+		w.Header().Set(gonet.ContentType, man.HeadJSON)
 
 		jv, _ := json.Marshal(result)
 		_, _ = w.Write(jv)
 	}))
 	defer ts.Close()
 
-	man2.URL = gonet.URL(ts.URL)
+	man2.URL = man.URL(ts.URL)
 	result2 := man2.AddAgent(agent)
 
 	assert.Equal(t, result, result2)
@@ -108,16 +114,16 @@ func TestMan2(t *testing.T) {
 }
 
 type Poster3 struct {
-	gonet.T `method:"POST"`
+	man.T `method:"POST"`
 
-	Upload  func(gonet.URL, gonet.UploadFile) Result
-	Upload2 func(gonet.URL, gonet.UploadFile, map[string]string) Result
+	Upload  func(man.URL, man.UploadFile) Result
+	Upload2 func(man.URL, man.UploadFile, map[string]string) Result
 }
 
 // nolint gochecknoglobals
 var man3 = func() *Poster3 {
 	p := &Poster3{}
-	if err := gonet.NewMan(p); err != nil {
+	if err := man.New(p); err != nil {
 		panic(err)
 	}
 
@@ -137,7 +143,7 @@ func TestMan3(t *testing.T) {
 		filename, filebytes, _ = ReceiveFile(r, "file")
 		value = r.FormValue("key")
 
-		w.Header().Set(gonet.ContentType, gonet.HeadJSON)
+		w.Header().Set(gonet.ContentType, man.HeadJSON)
 
 		jv, _ := json.Marshal(result)
 		_, _ = w.Write(jv)
@@ -145,7 +151,7 @@ func TestMan3(t *testing.T) {
 	defer ts.Close()
 
 	f, _ := os.Open("testdata/upload.txt")
-	result2 := man3.Upload(gonet.URL(ts.URL), gonet.MakeFile("file", "upload.txt", f))
+	result2 := man3.Upload(man.URL(ts.URL), man.MakeFile("file", "upload.txt", f))
 
 	f.Close()
 
@@ -156,7 +162,7 @@ func TestMan3(t *testing.T) {
 	assert.Equal(t, []byte("bingoohuang"), filebytes)
 
 	f, _ = os.Open("testdata/upload.txt")
-	result2 = man3.Upload2(gonet.URL(ts.URL), gonet.MakeFile("file", "upload.txt", f),
+	result2 = man3.Upload2(man.URL(ts.URL), man.MakeFile("file", "upload.txt", f),
 		map[string]string{"key": "value"})
 
 	f.Close()
@@ -188,13 +194,13 @@ func ReceiveFile(r *http.Request, filenameKey string) (string, []byte, error) {
 }
 
 type Poster4 struct {
-	Download func(gonet.URL, *gonet.DownloadFile)
+	Download func(man.URL, *man.DownloadFile)
 }
 
 // nolint gochecknoglobals
 var man4 = func() *Poster4 {
 	p := &Poster4{}
-	if err := gonet.NewMan(p); err != nil {
+	if err := man.New(p); err != nil {
 		panic(err)
 	}
 
@@ -220,21 +226,21 @@ func TestMan4(t *testing.T) {
 
 	var buf bytes.Buffer
 
-	df := &gonet.DownloadFile{Writer: &buf}
-	man4.Download(gonet.URL(ts.URL), df)
+	df := &man.DownloadFile{Writer: &buf}
+	man4.Download(man.URL(ts.URL), df)
 
 	assert.Equal(t, "upload.txt", df.Filename)
 	assert.Equal(t, "bingoohuang", buf.String())
 }
 
 type Poster5 struct {
-	Download func(gonet.URL, *gonet.DownloadFile) error
+	Download func(man.URL, *man.DownloadFile) error
 }
 
 // nolint gochecknoglobals
 var man5 = func() *Poster5 {
 	p := &Poster5{}
-	if err := gonet.NewMan(p); err != nil {
+	if err := man.New(p); err != nil {
 		panic(err)
 	}
 
@@ -251,12 +257,52 @@ func TestMan5(t *testing.T) {
 }
 
 func TestQuery(t *testing.T) {
-	u := gonet.QueryURL("http://a.b.c", "k", "v", "k2", "v2")
-	assert.Equal(t, gonet.URL("http://a.b.c?k=v&k2=v2"), u)
+	u := man.QueryURL("http://a.b.c", "k", "v", "k2", "v2")
+	assert.Equal(t, man.URL("http://a.b.c?k=v&k2=v2"), u)
 
-	u = gonet.QueryURL("http://a.b.c?a=b", "k", "v", "k2")
-	assert.Equal(t, gonet.URL("http://a.b.c?a=b&k=v&k2="), u)
+	u = man.QueryURL("http://a.b.c?a=b", "k", "v", "k2")
+	assert.Equal(t, man.URL("http://a.b.c?a=b&k=v&k2="), u)
 
-	u = gonet.QueryURL("http://a.b.c?a=b", "k", " ", "k2", "黄进兵")
-	assert.Equal(t, gonet.URL("http://a.b.c?a=b&k=+&k2=%E9%BB%84%E8%BF%9B%E5%85%B5"), u)
+	u = man.QueryURL("http://a.b.c?a=b", "k", " ", "k2", "黄进兵")
+	assert.Equal(t, man.URL("http://a.b.c?a=b&k=+&k2=%E9%BB%84%E8%BF%9B%E5%85%B5"), u)
+}
+
+type Poster6 struct {
+	Hello          func(man.URL, man.TLSConfDir) string `tlsConfFiles:"client.key,client.pem,root.pem"`
+	HelloUntrusted func(man.URL) error
+}
+
+// nolint gochecknoglobals
+var man6 = func() *Poster6 {
+	p := &Poster6{}
+	if err := man.New(p); err != nil {
+		panic(err)
+	}
+
+	return p
+}()
+
+func TestHttps6(t *testing.T) {
+	dir, err := ioutil.TempDir("", "man")
+	assert.Nil(t, err)
+
+	defer os.RemoveAll(dir)
+
+	filepath.Join()
+
+	assert.Nil(t, tlsconf.TLSGenRootFiles(dir, "root.key", "root.pem"))
+	assert.Nil(t, tlsconf.TLSGenServerFiles(dir, "root.key", "root.pem", "",
+		"server.key", "server.pem"))
+	assert.Nil(t, tlsconf.TLSGenClientFiles(dir, "root.key", "root.pem",
+		"client.key", "client.pem"))
+
+	ts := tlsconf.NewHTTPSTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(gonet.ContentType, "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte("bingoohuang"))
+	}), filepath.Join(dir, "server.pem"), filepath.Join(dir, "server.key"), filepath.Join(dir, "root.pem"))
+
+	defer ts.Close()
+
+	assert.Equal(t, "bingoohuang", man6.Hello(man.URL(ts.URL), man.TLSConfDir(dir)))
+	assert.Error(t, man6.HelloUntrusted(man.URL(ts.URL)))
 }

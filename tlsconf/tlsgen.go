@@ -1,4 +1,4 @@
-package gonet
+package tlsconf
 
 import (
 	"crypto"

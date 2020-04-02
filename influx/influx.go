@@ -1,4 +1,4 @@
-package gonet
+package influx
 
 import (
 	"errors"
@@ -7,12 +7,14 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/bingoohuang/gonet"
 )
 
-// InfluxQuery Query execute influxQl (refer to https://docs.influxdata.com/influxdb/v1.7/query_language)
+// Query Query execute influxQl (refer to https://docs.influxdata.com/influxdb/v1.7/query_language)
 // influxDBAddr  InfluxDB的连接地址， 例如http://localhost:8086, 注意：1. 右边没有/ 2. 右边不带其它path，例如/query等。
-func InfluxQuery(influxDBAddr, influxQl string) (string, error) {
-	req, err := Get(influxDBAddr + `/query`)
+func Query(influxDBAddr, influxQl string) (string, error) {
+	req, err := gonet.Get(influxDBAddr + `/query`)
 	if err != nil {
 		return "", err
 	}
@@ -22,10 +24,10 @@ func InfluxQuery(influxDBAddr, influxQl string) (string, error) {
 	return req.String()
 }
 
-// InfluxWrite 写入打点值
+// Write 写入打点值
 // refer https://github.com/DCSO/fluxline/blob/master/encoder.go
-func InfluxWrite(influxDBWriteAddr, line string) (*http.Response, string, error) {
-	req, err := Post(influxDBWriteAddr)
+func Write(influxDBWriteAddr, line string) (*http.Response, string, error) {
+	req, err := gonet.Post(influxDBWriteAddr)
 	if err != nil {
 		return nil, "", err
 	}

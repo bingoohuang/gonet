@@ -6,7 +6,7 @@
 ## Declarative HTTP requests.
 
 ```go
-import "github.com/bingoohuang/gonet"
+import "github.com/bingoohuang/gonet/man"
 
 type Agent struct {
 	Name string `json:"name"`
@@ -17,20 +17,20 @@ type Result struct {
 }
 
 type poster struct {
-	gonet.T `method:"POST"` // default method is POST
+	man.T `method:"POST"` // default method is POST
 
 	// fixed url set in the tag
 	AddAgent func(Agent) Result `url:"http://127.0.0.1:8888" timeout="10s"`
 	// dynamic url as the argument
-	Upload func(gonet.URL, gonet.UploadFile, map[string]string) Result
-	Download func(gonet.URL, *gonet.DownsloadFile) error
+	Upload func(man.URL, man.UploadFile, map[string]string) Result
+	Download func(man.URL, *man.DownsloadFile) error
 
-	GetAgent func(gonet.URL) Agent `method:"GET"`
+	GetAgent func(man.URL) Agent `method:"GET"`
 }
 
 var PostMan = func() *poster {
 	p := &poster{}
-	if err := gonet.NewMan(p); err != nil {
+	if err := man.New(p); err != nil {
 		panic(err)
 	}
 

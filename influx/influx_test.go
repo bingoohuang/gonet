@@ -1,4 +1,4 @@
-package gonet
+package influx
 
 import (
 	"fmt"
@@ -22,6 +22,6 @@ func TestInfluxWrite(t *testing.T) {
 	a.Equal(fmt.Sprintf("%s %d", "weather,location=us-midwest temperature=82", ti.UnixNano()), line)
 }
 
-//if err := InfluxWrite("http://beta.isignet.cn:10014/write?db=metrics", line); err != nil {
+//if err := Write("http://beta.isignet.cn:10014/write?db=metrics", line); err != nil {
 //	t.Fatal(err)
 //}

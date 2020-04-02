@@ -1,4 +1,4 @@
-package gonet
+package tlsconf
 
 import (
 	"crypto/tls"
@@ -14,30 +14,25 @@ import (
 )
 
 // NewHTTPSTestServer news a test https server.
-func NewHTTPSTestServer(handler http.Handler, serverCertFile, serverKeyFile string) (*httptest.Server, error) {
-	cert, err := tls.LoadX509KeyPair(serverCertFile, serverKeyFile)
-	if err != nil {
-		return nil, err
-	}
-
+func NewHTTPSTestServer(handler http.Handler, serverCertFile, serverKeyFile, clientRootCA string) *httptest.Server {
 	ts := httptest.NewUnstartedServer(handler)
-	ts.TLS = &tls.Config{Certificates: []tls.Certificate{cert}}
+	ts.TLS = CreateServer(serverKeyFile, serverCertFile, clientRootCA)
 	ts.StartTLS()
 
-	return ts, nil
+	return ts
 }
 
-// TLSConfigCreateServer ...
-func TLSConfigCreateServer(serverKeyFile, serverCertFile, clientRootCA string) *tls.Config {
-	if c, e := TLSConfigCreateServerE(serverKeyFile, serverCertFile, clientRootCA); e != nil {
-		panic("failed to create TLSConfigCreateServer " + e.Error())
+// CreateServer ...
+func CreateServer(serverKeyFile, serverCertFile, clientRootCA string) *tls.Config {
+	if c, e := CreateServerE(serverKeyFile, serverCertFile, clientRootCA); e != nil {
+		panic("failed to create CreateServer " + e.Error())
 	} else {
 		return c
 	}
 }
 
-// TLSConfigCreateServerE ...
-func TLSConfigCreateServerE(serverKeyFile, serverCertFile, clientRootCA string) (*tls.Config, error) {
+// CreateServerE ...
+func CreateServerE(serverKeyFile, serverCertFile, clientRootCA string) (*tls.Config, error) {
 	cert, err := tls.LoadX509KeyPair(serverCertFile, serverKeyFile)
 	if err != nil {
 		return nil, err
@@ -59,18 +54,18 @@ func TLSConfigCreateServerE(serverKeyFile, serverCertFile, clientRootCA string) 
 	return c, nil
 }
 
-// TLSConfigCreateClient ...
+// CreateClient ...
 // if serverRootCA is empty, the client will will not check the root CA of client.
-func TLSConfigCreateClient(clientKeyFile, clientCertFile, serverRootCA string) *tls.Config {
-	if c, e := TLSConfigCreateClientE(clientKeyFile, clientCertFile, serverRootCA); e != nil {
-		panic("failed to create TLSConfigCreateClient " + e.Error())
+func CreateClient(clientKeyFile, clientCertFile, serverRootCA string) *tls.Config {
+	if c, e := CreateClientE(clientKeyFile, clientCertFile, serverRootCA); e != nil {
+		panic("failed to create CreateClient " + e.Error())
 	} else {
 		return c
 	}
 }
 
-// TLSConfigCreateClientE ...
-func TLSConfigCreateClientE(clientKeyFile, clientCertFile, serverRootCA string) (*tls.Config, error) {
+// CreateClientE ...
+func CreateClientE(clientKeyFile, clientCertFile, serverRootCA string) (*tls.Config, error) {
 	c := &tls.Config{}
 	if serverRootCA == "" {
 		c.InsecureSkipVerify = true // #nosec G402
@@ -98,17 +93,17 @@ func TLSConfigCreateClientE(clientKeyFile, clientCertFile, serverRootCA string) 
 	return c, nil
 }
 
-// TLSConfigCreateClientBytes ...
-func TLSConfigCreateClientBytes(clientKeyFile, clientCertFile, serverRootCA []byte) *tls.Config {
-	if c, e := TLSConfigCreateClientBytesE(clientKeyFile, clientCertFile, serverRootCA); e != nil {
-		panic("failed to create TLSConfigCreateClient " + e.Error())
+// CreateClientBytes ...
+func CreateClientBytes(clientKeyFile, clientCertFile, serverRootCA []byte) *tls.Config {
+	if c, e := CreateClientBytesE(clientKeyFile, clientCertFile, serverRootCA); e != nil {
+		panic("failed to create CreateClient " + e.Error())
 	} else {
 		return c
 	}
 }
 
-// TLSConfigCreateClientBytesE ...
-func TLSConfigCreateClientBytesE(clientKeyFile, clientCertFile, serverRootCA []byte) (*tls.Config, error) {
+// CreateClientBytesE ...
+func CreateClientBytesE(clientKeyFile, clientCertFile, serverRootCA []byte) (*tls.Config, error) {
 	c := &tls.Config{}
 	if len(serverRootCA) == 0 {
 		c.InsecureSkipVerify = true // #nosec G402
@@ -136,17 +131,17 @@ func TLSConfigCreateClientBytesE(clientKeyFile, clientCertFile, serverRootCA []b
 	return c, nil
 }
 
-// TLSConfigCreateServerBytes ....
-func TLSConfigCreateServerBytes(serverKeyFile, serverCertFile, clientRootCA []byte) *tls.Config {
-	if c, e := TLSConfigCreateServerBytesE(serverKeyFile, serverCertFile, clientRootCA); e != nil {
-		panic("failed to create TLSConfigCreateServer " + e.Error())
+// CreateServerBytes ....
+func CreateServerBytes(serverKeyFile, serverCertFile, clientRootCA []byte) *tls.Config {
+	if c, e := CreateServerBytesE(serverKeyFile, serverCertFile, clientRootCA); e != nil {
+		panic("failed to create CreateServer " + e.Error())
 	} else {
 		return c
 	}
 }
 
-// TLSConfigCreateServerBytesE ...
-func TLSConfigCreateServerBytesE(serverKeyFile, serverCertFile, clientRootCA []byte) (*tls.Config, error) {
+// CreateServerBytesE ...
+func CreateServerBytesE(serverKeyFile, serverCertFile, clientRootCA []byte) (*tls.Config, error) {
 	cert, err := tls.X509KeyPair(serverCertFile, serverKeyFile)
 	if err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
-package gonet
+package tlsconf
 
 import (
 	"bufio"
@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+
+	"github.com/bingoohuang/gonet/freeport"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -66,8 +68,8 @@ func TestTlsCertsGenv3(t *testing.T) {
 }
 
 func create(serverRootCA, clientRoot, serverKey, serverCrt, clientKey, clientCrt string, t *testing.T) {
-	tlsConfig := TLSConfigCreateServer(serverKey, serverCrt, clientRoot)
-	portStr := MustFreePortStr()
+	tlsConfig := CreateServer(serverKey, serverCrt, clientRoot)
+	portStr := freeport.PortStr()
 	ln, err := tls.Listen("tcp", ":"+portStr, tlsConfig)
 
 	if err != nil {
@@ -89,7 +91,7 @@ func create(serverRootCA, clientRoot, serverKey, serverCrt, clientKey, clientCrt
 }
 
 func client(serverRootCA, clientKey, clientCrt string, portStr string, t *testing.T) {
-	conn, err := tls.Dial("tcp", "127.0.0.1:"+portStr, TLSConfigCreateClient(clientKey, clientCrt, serverRootCA))
+	conn, err := tls.Dial("tcp", "127.0.0.1:"+portStr, CreateClient(clientKey, clientCrt, serverRootCA))
 	assert.Nil(t, err)
 
 	defer conn.Close()

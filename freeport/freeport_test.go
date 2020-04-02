@@ -1,4 +1,4 @@
-package gonet
+package freeport
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -9,23 +9,23 @@ import (
 )
 
 func TestMustFreePort(t *testing.T) {
-	port := MustFreePort()
+	port := Port()
 	assert.True(t, IsPortFree(port))
 }
 
 func BenchmarkFreePort(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		port := MustFreePort()
+		port := Port()
 		assert.True(b, port > 0)
 	}
 }
 
 func TestMustFreePortStr(t *testing.T) {
-	assert.NotEmpty(t, MustFreePortStr())
+	assert.NotEmpty(t, PortStr())
 }
 
 func TestGetFreePort(t *testing.T) {
-	port, err := FreePort()
+	port, err := PortE()
 	if err != nil {
 		t.Error(err)
 	}
@@ -45,7 +45,7 @@ func TestGetFreePort(t *testing.T) {
 
 func TestGetFreePorts(t *testing.T) {
 	count := 3
-	ports, err := FreePorts(count)
+	ports, err := Ports(count)
 
 	if err != nil {
 		t.Error(err)
@@ -70,6 +70,6 @@ func TestGetFreePorts(t *testing.T) {
 }
 
 func TestFindFreePortFrom(t *testing.T) {
-	p := FindFreePortFrom(1024) // nolint gomnd
-	assert.True(t, p >= 1024)   // nolint gomnd
+	p := FindPortFrom(1024)   // nolint gomnd
+	assert.True(t, p >= 1024) // nolint gomnd
 }
