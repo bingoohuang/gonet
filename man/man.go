@@ -91,7 +91,12 @@ type Option struct {
 
 	ErrSetter func(err error)
 	Logger    Logger
+
+	Client *http.Client
 }
+
+// WithClient specifies the http client for the man.
+func WithClient(c *http.Client) OptionFn { return func(o *Option) { o.Client = c } }
 
 // OptionFn is the func prototype for Option.
 type OptionFn func(*Option)
@@ -179,32 +184,39 @@ type runner struct {
 	addr                     string
 	keepalive                string
 	option                   *Option
+	httpClient               *http.Client
 }
 
-func newRunner(option *Option, f StructField, numIn int, args []reflect.Value) (*runner, error) {
-	timeout := gotOption(timeoutType, "timeout", option.Timeout, f, numIn, args)
-	timeoutDuration, err := time.ParseDuration(timeout)
+func newRunner(option *Option, f StructField, numIn int, args []reflect.Value) (r *runner, err error) {
+	r = &runner{option: option}
 
-	if err != nil {
+	timeout := gotOption(timeoutType, "timeout", option.Timeout, f, numIn, args)
+
+	if r.timeout, err = time.ParseDuration(timeout); err != nil {
 		return nil, fmt.Errorf("failed to parse timeout %s error: %v", timeout, err)
 	}
 
-	u, err := parseURL(args, option, f, numIn)
-	if err != nil {
+	if r.addr, err = parseURL(args, option, f, numIn); err != nil {
 		return nil, err
 	}
 
-	return &runner{
-		option:       option,
-		method:       gotOption(methodType, "method", option.Method, f, numIn, args),
-		tlsConfDir:   gotOption(tlsConfDirType, "tlsConfDir", option.TLSConfDir, f, numIn, args),
-		tlsConfFiles: gotOption(tlsConfFilesType, "tlsConfFiles", option.TLSConfFiles, f, numIn, args),
-		dumpOption:   gotOption(nil, "dump", option.Method, f, numIn, args),
-		inputs:       gotInputs(f, numIn, args),
-		keepalive:    gotOption(keepAliveType, "keepalive", option.Keepalive, f, numIn, args),
-		timeout:      timeoutDuration,
-		addr:         u,
-	}, nil
+	r.method = gotOption(methodType, "method", option.Method, f, numIn, args)
+	r.dumpOption = gotOption(nil, "dump", option.Method, f, numIn, args)
+	r.inputs = gotInputs(f, numIn, args)
+
+	switch httpClientValue := findArgs(f, numIn, args, httpClientType); {
+	case httpClientValue.IsValid():
+		r.httpClient = httpClientValue.Interface().(*http.Client)
+	case option.Client != nil:
+		r.httpClient = option.Client
+	default:
+		r.tlsConfDir = gotOption(tlsConfDirType, "tlsConfDir", option.TLSConfDir, f, numIn, args)
+		r.tlsConfFiles = gotOption(tlsConfFilesType, "tlsConfFiles", option.TLSConfFiles, f, numIn, args)
+		r.keepalive = gotOption(keepAliveType, "keepalive", option.Keepalive, f, numIn, args)
+		r.httpClient = &http.Client{Transport: r.transport()}
+	}
+
+	return r, nil
 }
 
 func makeFunc(option *Option, f StructField, numIn, numOut int) generalFn {
@@ -259,9 +271,7 @@ func (r *runner) httpClientDo() (*http.Response, error) {
 
 	r.dumpReq(req, isFileUpload)
 
-	c := &http.Client{Transport: r.transport()}
-
-	return c.Do(req)
+	return r.httpClient.Do(req)
 }
 
 func parseURL(args []reflect.Value, option *Option, f StructField, numIn int) (string, error) {
@@ -613,6 +623,7 @@ func (s *StructValue) FieldByIndex(index int) StructField {
 var (
 	emptyValue reflect.Value
 
+	httpClientType   = reflect.TypeOf((*http.Client)(nil))
 	dlFilePtrType    = reflect.TypeOf((*DownloadFile)(nil))
 	paramsType       = reflect.TypeOf((*map[string]string)(nil)).Elem()
 	fileType         = reflect.TypeOf((*UploadFile)(nil)).Elem()

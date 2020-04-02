@@ -1,3 +1,4 @@
+// nolint gochecknoglobals
 package man_test
 
 import (
@@ -36,7 +37,6 @@ type poster1 struct {
 	AddAgent func(man.URL, Agent) Result `dump:"req,rsp"`
 }
 
-// nolint gochecknoglobals
 var man1 = func() (p poster1) { man.New(&p); return }()
 
 func TestMan1(t *testing.T) {
@@ -70,7 +70,6 @@ type Poster2 struct {
 	AddAgent func(Agent) Result
 }
 
-// nolint gochecknoglobals
 var man2 = func() *Poster2 { p := new(Poster2); man.New(p); return p }()
 
 func TestMan2(t *testing.T) {
@@ -114,7 +113,6 @@ func noPanic(t *testing.T) {
 	}
 }
 
-// nolint gochecknoglobals
 var man3 = func() (p Poster3) { man.New(&p); return }()
 
 func TestMan3(t *testing.T) {
@@ -184,7 +182,6 @@ type Poster4 struct {
 	Download func(man.URL, *man.DownloadFile)
 }
 
-// nolint gochecknoglobals
 var man4 = func() (p Poster4) { man.New(&p); return }()
 
 func TestMan4(t *testing.T) {
@@ -217,7 +214,6 @@ type Poster5 struct {
 	Download func(man.URL, *man.DownloadFile) error
 }
 
-// nolint gochecknoglobals
 var man5 = func() (p Poster5) { man.New(&p); return }()
 
 func TestMan5(t *testing.T) {
@@ -245,7 +241,6 @@ type Poster6 struct {
 	HelloUntrusted func(man.URL) error
 }
 
-// nolint gochecknoglobals
 var man6 = func() (p Poster6) { man.New(&p); return }()
 
 type Poster7 struct {
@@ -254,7 +249,6 @@ type Poster7 struct {
 	Hello func(man.URL, man.TLSConfDir) string
 }
 
-// nolint gochecknoglobals
 var man7 = func() (p Poster7) { man.New(&p); return }()
 
 func TestHttps6(t *testing.T) {
@@ -282,4 +276,30 @@ func TestHttps6(t *testing.T) {
 	assert.Error(t, man6.HelloUntrusted(man.URL(ts.URL)))
 
 	assert.Equal(t, "bingoohuang", man7.Hello(man.URL(ts.URL), man.TLSConfDir(dir)))
+}
+
+type Poster8 struct {
+	Hello func(man.URL, *http.Client) string
+}
+
+type Poster81 struct {
+	Hello func(man.URL) string
+}
+
+var man8 = func() (p Poster8) { man.New(&p); return }()
+
+func TestClient8(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(gonet.ContentType, "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte("bingoohuang"))
+	}))
+	defer ts.Close()
+
+	assert.Equal(t, "bingoohuang", man8.Hello(man.URL(ts.URL), http.DefaultClient))
+
+	man81 := &Poster81{}
+
+	man.New(man81, man.WithClient(http.DefaultClient))
+	assert.Equal(t, "bingoohuang", man81.Hello(man.URL(ts.URL)))
+
 }
