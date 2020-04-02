@@ -37,14 +37,7 @@ type poster1 struct {
 }
 
 // nolint gochecknoglobals
-var man1 = func() *poster1 {
-	p := &poster1{}
-	if err := man.New(p); err != nil {
-		panic(err)
-	}
-
-	return p
-}()
+var man1 = func() (p poster1) { man.New(&p); return }()
 
 func TestMan1(t *testing.T) {
 	agent := Agent{Name: "bingoo", Age: 100}
@@ -78,16 +71,11 @@ type Poster2 struct {
 }
 
 // nolint gochecknoglobals
-var man2 = func() *Poster2 {
-	p := &Poster2{}
-	if err := man.New(p); err != nil {
-		panic(err)
-	}
-
-	return p
-}()
+var man2 = func() *Poster2 { p := new(Poster2); man.New(p); return p }()
 
 func TestMan2(t *testing.T) {
+	defer noPanic(t)
+
 	agent := Agent{Name: "bingoo", Age: 100}
 	result := Result{State: 0, Message: "OK"}
 	method := ""
@@ -120,15 +108,14 @@ type Poster3 struct {
 	Upload2 func(man.URL, man.UploadFile, map[string]string) Result
 }
 
-// nolint gochecknoglobals
-var man3 = func() *Poster3 {
-	p := &Poster3{}
-	if err := man.New(p); err != nil {
-		panic(err)
+func noPanic(t *testing.T) {
+	if r := recover(); r != nil {
+		t.Errorf("The code did not panic")
 	}
+}
 
-	return p
-}()
+// nolint gochecknoglobals
+var man3 = func() (p Poster3) { man.New(&p); return }()
 
 func TestMan3(t *testing.T) {
 	result := Result{State: 0, Message: "OK"}
@@ -198,14 +185,7 @@ type Poster4 struct {
 }
 
 // nolint gochecknoglobals
-var man4 = func() *Poster4 {
-	p := &Poster4{}
-	if err := man.New(p); err != nil {
-		panic(err)
-	}
-
-	return p
-}()
+var man4 = func() (p Poster4) { man.New(&p); return }()
 
 func TestMan4(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -238,14 +218,7 @@ type Poster5 struct {
 }
 
 // nolint gochecknoglobals
-var man5 = func() *Poster5 {
-	p := &Poster5{}
-	if err := man.New(p); err != nil {
-		panic(err)
-	}
-
-	return p
-}()
+var man5 = func() (p Poster5) { man.New(&p); return }()
 
 func TestMan5(t *testing.T) {
 	err := man5.Download("http://127.0.0.1:8123", nil)
@@ -273,14 +246,16 @@ type Poster6 struct {
 }
 
 // nolint gochecknoglobals
-var man6 = func() *Poster6 {
-	p := &Poster6{}
-	if err := man.New(p); err != nil {
-		panic(err)
-	}
+var man6 = func() (p Poster6) { man.New(&p); return }()
 
-	return p
-}()
+type Poster7 struct {
+	man.T `tlsConfFiles:"client.key,client.pem,root.pem"`
+
+	Hello func(man.URL, man.TLSConfDir) string
+}
+
+// nolint gochecknoglobals
+var man7 = func() (p Poster7) { man.New(&p); return }()
 
 func TestHttps6(t *testing.T) {
 	dir, err := ioutil.TempDir("", "man")
@@ -305,4 +280,6 @@ func TestHttps6(t *testing.T) {
 
 	assert.Equal(t, "bingoohuang", man6.Hello(man.URL(ts.URL), man.TLSConfDir(dir)))
 	assert.Error(t, man6.HelloUntrusted(man.URL(ts.URL)))
+
+	assert.Equal(t, "bingoohuang", man7.Hello(man.URL(ts.URL), man.TLSConfDir(dir)))
 }

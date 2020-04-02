@@ -97,7 +97,14 @@ type Option struct {
 type OptionFn func(*Option)
 
 // New makes a new Man for http requests.
-func New(man interface{}, optionFns ...OptionFn) error {
+func New(man interface{}, optionFns ...OptionFn) {
+	if err := NewE(man, optionFns...); err != nil {
+		panic(err)
+	}
+}
+
+// New makes a new Man for http requests.
+func NewE(man interface{}, optionFns ...OptionFn) error {
 	v := reflect.ValueOf(man)
 	if v.Kind() != reflect.Ptr {
 		return fmt.Errorf("man1 shoud be a pointer")
@@ -166,8 +173,8 @@ type generalFn func(args []reflect.Value) ([]reflect.Value, error)
 func makeFunc(option *Option, f StructField, numIn int, numOut int) generalFn {
 	return func(args []reflect.Value) ([]reflect.Value, error) {
 		method := gotOption(methodType, "method", option.Method, f, numIn, args)
-		tlsConfDir := gotOption(tlsConfDirType, "tlsConfDir", option.TLSConfFiles, f, numIn, args)
-		tlsConfFiles := gotOption(tlsConfFilesType, "tlsConfFiles", option.TLSConfDir, f, numIn, args)
+		tlsConfDir := gotOption(tlsConfDirType, "tlsConfDir", option.TLSConfDir, f, numIn, args)
+		tlsConfFiles := gotOption(tlsConfFilesType, "tlsConfFiles", option.TLSConfFiles, f, numIn, args)
 		dumpOption := gotOption(nil, "dump", option.Method, f, numIn, args)
 		inputs := gotInputs(f, numIn, args)
 
@@ -496,6 +503,14 @@ func makeOption(structValue *StructValue, manv reflect.Value, optionFns []Option
 
 	if o.Timeout == "" {
 		_, o.Timeout = findOption(keepAliveType, "timeout", "90s", structValue, manv)
+	}
+
+	if o.TLSConfDir == "" {
+		_, o.TLSConfDir = findOption(tlsConfDirType, "tlsConfDir", "", structValue, manv)
+	}
+
+	if o.TLSConfFiles == "" {
+		_, o.TLSConfFiles = findOption(tlsConfFilesType, "tlsConfFiles", "", structValue, manv)
 	}
 
 	createErrorSetter(o)

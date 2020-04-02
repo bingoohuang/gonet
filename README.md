@@ -82,12 +82,12 @@ openssl x509 -req -in client.csr -CA root.pem -CAkey root.key -CAcreateserial -e
 ## go server usage demo
 
 ```go
-import "github.com/bingoohuang/gonet"
+import "github.com/bingoohuang/gonet/tlsconf"
 
 // 传入服务端私钥文件，服务端证书文件，以及客户端根证书文件（可选 ，不传时不进行客户端证书校验）
-tlsConfig := gonet.TLSConfigCreateServerMust(serverKeyFile, serverPemFile, clientRootPemFile)
+tlsConf := tlsconf.CreateServer(serverKeyFile, serverPemFile, clientRootPemFile)
 addr := ":8080"
-ln, err := tls.Listen("tcp", addr, tlsConfig)
+ln, err := tls.Listen("tcp", addr, tlsConf)
 
 route := gin.Default()
 server := &http.Server{Addr: addr, Handler: route}
@@ -97,15 +97,14 @@ err := server.Serve(ln)
 ## go client usage demo
 
 ```go
-import "github.com/bingoohuang/gonet"
+import "github.com/bingoohuang/gonet/tlsconf"
 
 // 传入客户端私钥文件，客户端证书文件，以及服务端根证书文件（可选 ，不传时不进行服务端证书校验）
-tlsClientConfig := gonet.TLSConfigCreateClientMust(c.ClientKey, c.ClientPem, c.RootPem)
-gonet.MustGet("https://httpbin.org/get").TLSClientConfig(tlsClientConfig).String()
+tlsClientConf := tlsconf.CreateClient(c.ClientKey, c.ClientPem, c.RootPem)
+gonet.MustGet("https://httpbin.org/get").TLSClientConfig(tlsClientConf).String()
 ```
 
 具体客户端https证书使用案例，可以参见[typhon4g](https://github.com/bingoohuang/typhon4g)。
-
 
 ## Thanks
 
