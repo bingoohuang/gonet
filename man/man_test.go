@@ -14,7 +14,6 @@ import (
 	"testing"
 
 	"github.com/bingoohuang/gonet/man"
-
 	"github.com/bingoohuang/gonet/tlsconf"
 
 	"github.com/bingoohuang/gonet"
@@ -301,5 +300,43 @@ func TestClient8(t *testing.T) {
 
 	man.New(man81, man.WithClient(http.DefaultClient))
 	assert.Equal(t, "bingoohuang", man81.Hello(man.URL(ts.URL)))
+}
 
+func TestKeepalive(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(gonet.ContentType, "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte("bingoohuang"))
+	}))
+	defer ts.Close()
+
+	man81 := &Poster81{}
+	man.New(man81)
+
+	println(ts.URL)
+
+	for i := 0; i < 5; i++ {
+		assert.Equal(t, "bingoohuang", man81.Hello(man.URL(ts.URL)))
+	}
+}
+
+type Poster9 struct {
+	man.T `keepalive:"off"`
+
+	Hello func(man.URL) string
+}
+
+var man9 = func() (p Poster9) { man.New(&p); return }()
+
+func TestKeepaliveOff(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(gonet.ContentType, "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte("bingoohuang"))
+	}))
+	defer ts.Close()
+
+	println(ts.URL)
+
+	for i := 0; i < 5; i++ {
+		assert.Equal(t, "bingoohuang", man9.Hello(man.URL(ts.URL)))
+	}
 }
