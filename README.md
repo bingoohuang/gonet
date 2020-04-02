@@ -38,7 +38,7 @@ var PostMan = func() *poster {
 }()
 
 func main() {
-    result := man.AddAgent(agentAgent{Name: "bingoo"})
+    result := PostMan.AddAgent(agentAgent{Name: "bingoo"})
 	// ...
 }
 
