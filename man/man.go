@@ -81,8 +81,8 @@ type Option struct {
 
 	// Method ...
 	Method string
-	// KeepAlive ...
-	KeepAlive string
+	// Keepalive ...
+	Keepalive string
 	// Timeout ...
 	Timeout string
 	// TLSConfFiles like clientKeyFile,clientCertFile,serverRootCA(required=false)
@@ -170,28 +170,51 @@ func createFn(option *Option, f StructField) error {
 
 type generalFn func(args []reflect.Value) ([]reflect.Value, error)
 
-func makeFunc(option *Option, f StructField, numIn int, numOut int) generalFn {
+type runner struct {
+	method                   string
+	tlsConfDir, tlsConfFiles string
+	dumpOption               string
+	inputs                   []reflect.Value
+	timeout                  time.Duration
+	addr                     string
+	keepalive                string
+	option                   *Option
+}
+
+func newRunner(option *Option, f StructField, numIn int, args []reflect.Value) (*runner, error) {
+	timeout := gotOption(timeoutType, "timeout", option.Timeout, f, numIn, args)
+	timeoutDuration, err := time.ParseDuration(timeout)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse timeout %s error: %v", timeout, err)
+	}
+
+	u, err := parseURL(args, option, f, numIn)
+	if err != nil {
+		return nil, err
+	}
+
+	return &runner{
+		option:       option,
+		method:       gotOption(methodType, "method", option.Method, f, numIn, args),
+		tlsConfDir:   gotOption(tlsConfDirType, "tlsConfDir", option.TLSConfDir, f, numIn, args),
+		tlsConfFiles: gotOption(tlsConfFilesType, "tlsConfFiles", option.TLSConfFiles, f, numIn, args),
+		dumpOption:   gotOption(nil, "dump", option.Method, f, numIn, args),
+		inputs:       gotInputs(f, numIn, args),
+		keepalive:    gotOption(keepAliveType, "keepalive", option.Keepalive, f, numIn, args),
+		timeout:      timeoutDuration,
+		addr:         u,
+	}, nil
+}
+
+func makeFunc(option *Option, f StructField, numIn, numOut int) generalFn {
 	return func(args []reflect.Value) ([]reflect.Value, error) {
-		method := gotOption(methodType, "method", option.Method, f, numIn, args)
-		tlsConfDir := gotOption(tlsConfDirType, "tlsConfDir", option.TLSConfDir, f, numIn, args)
-		tlsConfFiles := gotOption(tlsConfFilesType, "tlsConfFiles", option.TLSConfFiles, f, numIn, args)
-		dumpOption := gotOption(nil, "dump", option.Method, f, numIn, args)
-		inputs := gotInputs(f, numIn, args)
-
-		//keepAlive := gotKeepAlive(option, f, numIn, args)
-		timeout := gotOption(timeoutType, "timeout", option.Timeout, f, numIn, args)
-		timeoutDuration, err := time.ParseDuration(timeout)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse timeout %s error: %v", timeout, err)
-		}
-
-		u, err := parseURL(args, option, f, numIn)
+		runner, err := newRunner(option, f, numIn, args)
 		if err != nil {
 			return nil, err
 		}
 
-		rsp, err := httpClientDo(tlsConfDir, tlsConfFiles, inputs, method, u, dumpOption, option, timeoutDuration)
+		rsp, err := runner.httpClientDo()
 		if err != nil {
 			return nil, err
 		}
@@ -205,7 +228,7 @@ func makeFunc(option *Option, f StructField, numIn int, numOut int) generalFn {
 			}
 		}
 
-		dumpRsp(dumpOption, rsp, dlValue, option)
+		runner.dumpRsp(rsp, dlValue)
 
 		if numOut == 0 {
 			return []reflect.Value{}, nil
@@ -219,14 +242,13 @@ func makeFunc(option *Option, f StructField, numIn int, numOut int) generalFn {
 	}
 }
 
-func httpClientDo(tlsConfDir, tlsConfFiles string, inputs []reflect.Value, method, url, dumpOption string,
-	option *Option, timeoutDuration time.Duration) (*http.Response, error) {
-	body, contentType, isFileUpload, err := parseBodyContentType(inputs)
+func (r *runner) httpClientDo() (*http.Response, error) {
+	body, contentType, isFileUpload, err := parseBodyContentType(r.inputs)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest(method, url, body)
+	req, err := http.NewRequest(r.method, r.addr, body)
 	if err != nil {
 		return nil, err
 	}
@@ -235,9 +257,9 @@ func httpClientDo(tlsConfDir, tlsConfFiles string, inputs []reflect.Value, metho
 		req.Header.Set(gonet.ContentType, contentType)
 	}
 
-	dumpReq(dumpOption, req, isFileUpload, option)
+	r.dumpReq(req, isFileUpload)
 
-	c := &http.Client{Transport: transport(timeoutDuration, tlsConfDir, tlsConfFiles)}
+	c := &http.Client{Transport: r.transport()}
 
 	return c.Do(req)
 }
@@ -255,18 +277,18 @@ func parseURL(args []reflect.Value, option *Option, f StructField, numIn int) (s
 	return u, nil
 }
 
-func dumpRsp(dumpOption string, rsp *http.Response, dlValue reflect.Value, option *Option) {
-	if !strings.Contains(dumpOption, "rsp") {
+func (r *runner) dumpRsp(rsp *http.Response, dlValue reflect.Value) {
+	if !strings.Contains(r.dumpOption, "rsp") {
 		return
 	}
 
 	d, err := httputil.DumpResponse(rsp, !dlValue.IsValid())
 	if err != nil {
-		option.Logger.LogError(err)
+		r.option.Logger.LogError(err)
 		return
 	}
 
-	if l, ok := option.Logger.(DumpResponseLogger); ok {
+	if l, ok := r.option.Logger.(DumpResponseLogger); ok {
 		l.Dump(d)
 		return
 	}
@@ -274,18 +296,18 @@ func dumpRsp(dumpOption string, rsp *http.Response, dlValue reflect.Value, optio
 	logrus.Infof("Response:\n%s\n", d)
 }
 
-func dumpReq(dumpOption string, req *http.Request, isFileUpload bool, option *Option) {
-	if !strings.Contains(dumpOption, "req") {
+func (r *runner) dumpReq(req *http.Request, isFileUpload bool) {
+	if !strings.Contains(r.dumpOption, "req") {
 		return
 	}
 
 	d, err := httputil.DumpRequest(req, !isFileUpload)
 	if err != nil {
-		option.Logger.LogError(err)
+		r.option.Logger.LogError(err)
 		return
 	}
 
-	if l, ok := option.Logger.(DumpRequestLogger); ok {
+	if l, ok := r.option.Logger.(DumpRequestLogger); ok {
 		l.Dump(d)
 		return
 	}
@@ -406,23 +428,23 @@ func processOut(f StructField, res *http.Response) ([]reflect.Value, error) {
 	}
 }
 
-func transport(timeout time.Duration, tlsConfDir, tlsConfFiles string) *http.Transport {
+func (r *runner) transport() *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
-			Timeout:   timeout,
-			KeepAlive: timeout,
+			Timeout:   r.timeout,
+			KeepAlive: r.timeout,
 		}).DialContext,
 		//MaxIdleConns:          100,
-		IdleConnTimeout:       timeout,
-		TLSHandshakeTimeout:   timeout,
-		ExpectContinueTimeout: timeout,
+		IdleConnTimeout:       r.timeout,
+		TLSHandshakeTimeout:   r.timeout,
+		ExpectContinueTimeout: r.timeout,
 		//MaxIdleConnsPerHost:   runtime.GOMAXPROCS(0) + 1,
 
 		DisableKeepAlives:   true,
 		MaxIdleConnsPerHost: -1,
 
-		TLSClientConfig: parseTLSConfig(tlsConfDir, tlsConfFiles),
+		TLSClientConfig: parseTLSConfig(r.tlsConfDir, r.tlsConfFiles),
 	}
 }
 
@@ -497,8 +519,8 @@ func makeOption(structValue *StructValue, manv reflect.Value, optionFns []Option
 		_, o.Method = findOption(methodType, "method", "GET", structValue, manv)
 	}
 
-	if o.KeepAlive == "" {
-		_, o.KeepAlive = findOption(keepAliveType, "keepalive", "true", structValue, manv)
+	if o.Keepalive == "" {
+		_, o.Keepalive = findOption(keepAliveType, "keepalive", "true", structValue, manv)
 	}
 
 	if o.Timeout == "" {
