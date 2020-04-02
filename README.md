@@ -8,34 +8,18 @@
 ```go
 import "github.com/bingoohuang/gonet/man"
 
-type Agent struct {
-	Name string `json:"name"`
-}
-
-type Result struct {
-	State int `json:"state"`
-}
-
 type poster struct {
 	man.T `method:"POST"` // default method is POST
 
 	// fixed url set in the tag
 	AddAgent func(Agent) Result `url:"http://127.0.0.1:8888" timeout="10s"`
 	// dynamic url as the argument
-	Upload func(man.URL, man.UploadFile, map[string]string) Result
+	Upload   func(man.URL, man.UploadFile, map[string]string) Result
 	Download func(man.URL, *man.DownsloadFile) error
-
 	GetAgent func(man.URL) Agent `method:"GET"`
 }
 
-var PostMan = func() *poster {
-	p := &poster{}
-	if err := man.New(p); err != nil {
-		panic(err)
-	}
-
-	return p
-}()
+var PostMan = func() (p poster) { man.New(&p); return }()
 
 func main() {
     result := PostMan.AddAgent(agentAgent{Name: "bingoo"})
