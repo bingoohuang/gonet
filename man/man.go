@@ -14,7 +14,9 @@ import (
 	"net/url"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bingoohuang/gonet"
@@ -38,8 +40,8 @@ type Method string
 // Timeout is the timeout setting for the http requests.
 type Timeout string
 
-// KeepAlive is the keep-alive flag (true(on,yes,1) /false(no, off,0), default true.
-type KeepAlive string
+// Keepalive is the keep-alive flag (true(on,yes,1) /false(no, off,0), default true.
+type Keepalive string
 
 const (
 	// HeadJSON is the const content type of JSON.
@@ -212,7 +214,7 @@ func newRunner(option *Option, f StructField, numIn int, args []reflect.Value) (
 	default:
 		r.tlsConfDir = gotOption(tlsConfDirType, "tlsConfDir", option.TLSConfDir, f, numIn, args)
 		r.tlsConfFiles = gotOption(tlsConfFilesType, "tlsConfFiles", option.TLSConfFiles, f, numIn, args)
-		r.keepalive = gotOption(keepAliveType, "keepalive", option.Keepalive, f, numIn, args)
+		r.keepalive = gotOption(keepaliveType, "keepalive", option.Keepalive, f, numIn, args)
 		r.httpClient = &http.Client{Transport: r.transport()}
 	}
 
@@ -438,24 +440,65 @@ func processOut(f StructField, res *http.Response) ([]reflect.Value, error) {
 	}
 }
 
+type transportKey struct {
+	timeout                  time.Duration
+	tlsConfDir, tlsConfFiles string
+}
+
+// nolint gochecknoglobals
+var (
+	transportMap     = make(map[transportKey]*http.Transport)
+	transportMapLock sync.RWMutex
+)
+
 func (r *runner) transport() *http.Transport {
-	return &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   r.timeout,
-			KeepAlive: r.timeout,
-		}).DialContext,
-		//MaxIdleConns:          100,
+	if !Keepalive(r.keepalive).IsKeepAlive() {
+		return &http.Transport{
+			Proxy:                 http.ProxyFromEnvironment,
+			DialContext:           (&net.Dialer{Timeout: r.timeout, KeepAlive: r.timeout}).DialContext,
+			IdleConnTimeout:       r.timeout,
+			TLSHandshakeTimeout:   r.timeout,
+			ExpectContinueTimeout: r.timeout,
+			DisableKeepAlives:     true,
+			MaxIdleConnsPerHost:   -1,
+
+			TLSClientConfig: parseTLSConfig(r.tlsConfDir, r.tlsConfFiles),
+		}
+	}
+
+	key := transportKey{
+		timeout:      r.timeout,
+		tlsConfDir:   r.tlsConfDir,
+		tlsConfFiles: r.tlsConfFiles,
+	}
+
+	transportMapLock.RLock()
+	t, ok := transportMap[key]
+	transportMapLock.RUnlock()
+
+	if ok {
+		return t
+	}
+
+	transportMapLock.Lock()
+	defer transportMapLock.Unlock()
+
+	t = &http.Transport{
+		Proxy:        http.ProxyFromEnvironment,
+		DialContext:  (&net.Dialer{Timeout: r.timeout, KeepAlive: r.timeout}).DialContext,
+		MaxIdleConns: 100, // nolint gomnd
+
 		IdleConnTimeout:       r.timeout,
 		TLSHandshakeTimeout:   r.timeout,
 		ExpectContinueTimeout: r.timeout,
-		//MaxIdleConnsPerHost:   runtime.GOMAXPROCS(0) + 1,
-
-		DisableKeepAlives:   true,
-		MaxIdleConnsPerHost: -1,
+		MaxIdleConnsPerHost:   runtime.GOMAXPROCS(0) + 1,
 
 		TLSClientConfig: parseTLSConfig(r.tlsConfDir, r.tlsConfFiles),
 	}
+
+	transportMap[key] = t
+
+	return t
 }
 
 func parseTLSConfig(tlsConfDir, tlsConfFiles string) *tls.Config {
@@ -530,11 +573,11 @@ func makeOption(structValue *StructValue, manv reflect.Value, optionFns []Option
 	}
 
 	if o.Keepalive == "" {
-		_, o.Keepalive = findOption(keepAliveType, "keepalive", "true", structValue, manv)
+		_, o.Keepalive = findOption(keepaliveType, "keepalive", "true", structValue, manv)
 	}
 
 	if o.Timeout == "" {
-		_, o.Timeout = findOption(keepAliveType, "timeout", "90s", structValue, manv)
+		_, o.Timeout = findOption(timeoutType, "timeout", "90s", structValue, manv)
 	}
 
 	if o.TLSConfDir == "" {
@@ -627,7 +670,7 @@ var (
 	dlFilePtrType    = reflect.TypeOf((*DownloadFile)(nil))
 	paramsType       = reflect.TypeOf((*map[string]string)(nil)).Elem()
 	fileType         = reflect.TypeOf((*UploadFile)(nil)).Elem()
-	keepAliveType    = reflect.TypeOf((*KeepAlive)(nil)).Elem()
+	keepaliveType    = reflect.TypeOf((*Keepalive)(nil)).Elem()
 	timeoutType      = reflect.TypeOf((*Timeout)(nil)).Elem()
 	tType            = reflect.TypeOf((*T)(nil)).Elem()
 	urlType          = reflect.TypeOf((*URL)(nil)).Elem()
@@ -640,7 +683,7 @@ var (
 
 func inputType(t reflect.Type) bool {
 	switch t {
-	case methodType, urlType, timeoutType, keepAliveType, dlFilePtrType, tlsConfFilesType, tlsConfDirType:
+	case methodType, urlType, timeoutType, keepaliveType, dlFilePtrType, tlsConfFilesType, tlsConfDirType:
 		return false
 	}
 
@@ -648,7 +691,7 @@ func inputType(t reflect.Type) bool {
 }
 
 // IsKeepAlive tells the keepalive option is enabled or not.
-func (k KeepAlive) IsKeepAlive() bool {
+func (k Keepalive) IsKeepAlive() bool {
 	switch strings.ToLower(string(k)) {
 	case "false", "no", "off", "0":
 		return false
