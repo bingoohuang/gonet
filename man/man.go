@@ -94,11 +94,11 @@ type Option struct {
 	ErrSetter func(err error)
 	Logger    Logger
 
-	Client *http.Client
+	Client HTTPClient
 }
 
 // WithClient specifies the http client for the man.
-func WithClient(c *http.Client) OptionFn { return func(o *Option) { o.Client = c } }
+func WithClient(c HTTPClient) OptionFn { return func(o *Option) { o.Client = c } }
 
 // OptionFn is the func prototype for Option.
 type OptionFn func(*Option)
@@ -186,7 +186,7 @@ type runner struct {
 	addr                     string
 	keepalive                string
 	option                   *Option
-	httpClient               *http.Client
+	httpClient               HTTPClient
 }
 
 func newRunner(option *Option, f StructField, numIn int, args []reflect.Value) (r *runner, err error) {
@@ -206,9 +206,9 @@ func newRunner(option *Option, f StructField, numIn int, args []reflect.Value) (
 	r.dumpOption = gotOption(nil, "dump", option.Method, f, numIn, args)
 	r.inputs = gotInputs(f, numIn, args)
 
-	switch httpClientValue := findArgs(f, numIn, args, httpClientType); {
+	switch httpClientValue := findArgsImpl(f, numIn, args, httpClientType); {
 	case httpClientValue.IsValid():
-		r.httpClient = httpClientValue.Interface().(*http.Client)
+		r.httpClient = httpClientValue.Interface().(HTTPClient)
 	case option.Client != nil:
 		r.httpClient = option.Client
 	default:
@@ -531,6 +531,16 @@ func gotInputs(f StructField, numIn int, args []reflect.Value) []reflect.Value {
 	return inputs
 }
 
+func findArgsImpl(f StructField, numIn int, args []reflect.Value, typ reflect.Type) reflect.Value {
+	for i := 0; i < numIn; i++ {
+		if gor.ImplType(f.Type.In(i), typ) {
+			return args[i]
+		}
+	}
+
+	return emptyValue
+}
+
 func findArgs(f StructField, numIn int, args []reflect.Value, typ reflect.Type) reflect.Value {
 	for i := 0; i < numIn; i++ {
 		if f.Type.In(i) == typ {
@@ -662,11 +672,16 @@ func (s *StructValue) FieldByIndex(index int) StructField {
 	}
 }
 
+// HTTPClient defines the interface for HTTP client.
+type HTTPClient interface {
+	Do(*http.Request) (*http.Response, error)
+}
+
 // nolint gochecknoglobals
 var (
 	emptyValue reflect.Value
 
-	httpClientType   = reflect.TypeOf((*http.Client)(nil))
+	httpClientType   = reflect.TypeOf((*HTTPClient)(nil)).Elem()
 	dlFilePtrType    = reflect.TypeOf((*DownloadFile)(nil))
 	paramsType       = reflect.TypeOf((*map[string]string)(nil)).Elem()
 	fileType         = reflect.TypeOf((*UploadFile)(nil)).Elem()
@@ -683,7 +698,8 @@ var (
 
 func inputType(t reflect.Type) bool {
 	switch t {
-	case methodType, urlType, timeoutType, keepaliveType, dlFilePtrType, tlsConfFilesType, tlsConfDirType:
+	case methodType, urlType, timeoutType, keepaliveType, dlFilePtrType,
+		tlsConfFilesType, tlsConfDirType, httpClientType, tType:
 		return false
 	}
 
