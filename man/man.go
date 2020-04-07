@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"net"
@@ -166,7 +167,11 @@ func createFn(option *Option, f StructField) error {
 		}
 
 		if lastOutError {
-			values = append(values, reflect.ValueOf(err))
+			if err != nil {
+				values = append(values, reflect.ValueOf(err))
+			} else {
+				values = append(values, reflect.Zero(gor.ErrType))
+			}
 		}
 
 		return values
@@ -228,7 +233,7 @@ func makeFunc(option *Option, f StructField, numIn, numOut int) generalFn {
 			return nil, err
 		}
 
-		rsp, err := runner.httpClientDo()
+		req, rsp, err := runner.httpClientDo()
 		if err != nil {
 			return nil, err
 		}
@@ -242,7 +247,7 @@ func makeFunc(option *Option, f StructField, numIn, numOut int) generalFn {
 			}
 		}
 
-		runner.dumpRsp(rsp, dlValue)
+		runner.dumpRsp(req, rsp, dlValue)
 
 		if numOut == 0 {
 			return []reflect.Value{}, nil
@@ -252,19 +257,19 @@ func makeFunc(option *Option, f StructField, numIn, numOut int) generalFn {
 			return nil, fmt.Errorf("download file has alread read all the response body")
 		}
 
-		return processOut(f, rsp)
+		return processOut(f, rsp, numOut)
 	}
 }
 
-func (r *runner) httpClientDo() (*http.Response, error) {
+func (r *runner) httpClientDo() (*http.Request, *http.Response, error) {
 	body, contentType, isFileUpload, err := parseBodyContentType(r.inputs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	req, err := http.NewRequest(r.method, r.addr, body)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if contentType != "" {
@@ -273,7 +278,9 @@ func (r *runner) httpClientDo() (*http.Response, error) {
 
 	r.dumpReq(req, isFileUpload)
 
-	return r.httpClient.Do(req)
+	rsp, err := r.httpClient.Do(req)
+
+	return req, rsp, err
 }
 
 func parseURL(args []reflect.Value, option *Option, f StructField, numIn int) (string, error) {
@@ -289,7 +296,9 @@ func parseURL(args []reflect.Value, option *Option, f StructField, numIn int) (s
 	return u, nil
 }
 
-func (r *runner) dumpRsp(rsp *http.Response, dlValue reflect.Value) {
+func (r *runner) dumpRsp(req *http.Request, rsp *http.Response, dlValue reflect.Value) {
+	logrus.Debugf("[%s %s] StatusCode[%d]", req.Method, req.URL.String(), rsp.StatusCode)
+
 	if !strings.Contains(r.dumpOption, "rsp") {
 		return
 	}
@@ -411,33 +420,77 @@ func findInputByType(inputs []reflect.Value, typ reflect.Type) reflect.Value {
 	return emptyValue
 }
 
-func processOut(f StructField, res *http.Response) ([]reflect.Value, error) {
-	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return nil, fmt.Errorf("unexpected status code %d with  response %s",
-			res.StatusCode, string(gonet.ReadBytes(res.Body)))
+// DrainBody reads all of b to memory and then returns two equivalent
+// ReadClosers yielding the same bytes.
+//
+// It returns an error if the initial slurp of all bytes fails. It does not attempt
+// to make the returned ReadClosers have identical error-matching behavior.
+func DrainBody(b io.ReadCloser) (r1 []byte, r2 io.ReadCloser, err error) {
+	if b == nil || b == http.NoBody {
+		// No copying needed. Preserve the magic sentinel meaning of NoBody.
+		return nil, http.NoBody, nil
 	}
 
-	bodyBytes := gonet.ReadBytes(res.Body)
-	outType := f.Type.Out(0)
+	var buf bytes.Buffer
 
-	switch outType.Kind() {
-	case reflect.Struct:
-		outVPtr := reflect.New(outType)
-		if err := json.Unmarshal(bodyBytes, outVPtr.Interface()); err != nil {
-			return nil, err
-		}
-
-		return []reflect.Value{outVPtr.Elem()}, nil
-	case reflect.String:
-		return []reflect.Value{reflect.ValueOf(string(bodyBytes))}, nil
-	default:
-		any, err := gor.CastAny(string(bodyBytes), outType)
-		if err != nil {
-			return nil, err
-		}
-
-		return []reflect.Value{any}, nil
+	if _, err = buf.ReadFrom(b); err != nil {
+		return nil, b, err
 	}
+
+	if err = b.Close(); err != nil {
+		return nil, b, err
+	}
+
+	return buf.Bytes(), ioutil.NopCloser(bytes.NewReader(buf.Bytes())), nil
+}
+
+func processOut(f StructField, res *http.Response, outNum int) ([]reflect.Value, error) {
+	var (
+		bodyBytes []byte
+		err       error
+	)
+
+	outs := make([]reflect.Value, 0, outNum)
+
+	for i := 0; i < outNum; i++ {
+		outType := f.Type.Out(i)
+		if outType == reflect.TypeOf(res) {
+			outs = append(outs, reflect.ValueOf(res))
+			continue
+		}
+
+		if bodyBytes == nil {
+			if bodyBytes, res.Body, err = DrainBody(res.Body); err != nil {
+				return nil, err
+			}
+		}
+
+		if res.StatusCode < 200 || res.StatusCode >= 300 {
+			return nil, fmt.Errorf("unexpected status code %d with  response %s",
+				res.StatusCode, string(gonet.ReadBytes(res.Body)))
+		}
+
+		switch outType.Kind() {
+		case reflect.Struct:
+			outVPtr := reflect.New(outType)
+			if err := json.Unmarshal(bodyBytes, outVPtr.Interface()); err != nil {
+				return nil, err
+			}
+
+			outs = append(outs, outVPtr.Elem())
+		case reflect.String:
+			outs = append(outs, reflect.ValueOf(string(bodyBytes)))
+		default:
+			any, err := gor.CastAny(string(bodyBytes), outType)
+			if err != nil {
+				return nil, err
+			}
+
+			outs = append(outs, any)
+		}
+	}
+
+	return outs, nil
 }
 
 type transportKey struct {

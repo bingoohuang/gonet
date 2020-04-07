@@ -4,6 +4,7 @@ package man_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -66,7 +67,7 @@ func TestMan1(t *testing.T) {
 type Poster2 struct {
 	man.URL
 
-	AddAgent func(Agent) Result
+	AddAgent func(Agent) (Result, *http.Response, error)
 }
 
 var man2 = func() *Poster2 { p := new(Poster2); man.New(p); return p }()
@@ -92,8 +93,10 @@ func TestMan2(t *testing.T) {
 	defer ts.Close()
 
 	man2.URL = man.URL(ts.URL)
-	result2 := man2.AddAgent(agent)
+	result2, rsp, err := man2.AddAgent(agent)
 
+	assert.Nil(t, err)
+	assert.Equal(t, 200, rsp.StatusCode)
 	assert.Equal(t, result, result2)
 	assert.Equal(t, "GET", method)
 	assert.Equal(t, agent, requestAgent)
@@ -108,7 +111,8 @@ type Poster3 struct {
 
 func noPanic(t *testing.T) {
 	if r := recover(); r != nil {
-		t.Errorf("The code did not panic")
+		t.Errorf("The code panic")
+		fmt.Println(r)
 	}
 }
 
