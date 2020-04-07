@@ -286,7 +286,8 @@ type Poster8 struct {
 }
 
 type Poster81 struct {
-	Hello func(man.URL) string
+	Hello            func(man.URL) string
+	HelloNoKeepalive func(man.URL) string `keepalive:"off"`
 }
 
 var man8 = func() (p Poster8) { man.New(&p); return }()
@@ -321,6 +322,39 @@ func TestKeepalive(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		assert.Equal(t, "bingoohuang", man81.Hello(man.URL(ts.URL)))
 	}
+
+	for i := 0; i < 5; i++ {
+		assert.Equal(t, "bingoohuang", man81.HelloNoKeepalive(man.URL(ts.URL)))
+	}
+
+	/*
+	   https://github.com/40t/go-sniffer
+
+	   $ sudo go-sniffer lo0 http -p 60793
+	   tcp and port 60793
+	   # Start new stream: 127.0.0.1->127.0.0.1 60839->60793
+	   # Start new stream: 127.0.0.1->127.0.0.1 60793->60839
+	   2020/04/04 22:30:50 [GET] [127.0.0.1:60793/] []
+	   2020/04/04 22:30:50 [GET] [127.0.0.1:60793/] []
+	   2020/04/04 22:30:50 [GET] [127.0.0.1:60793/] []
+	   2020/04/04 22:30:50 [GET] [127.0.0.1:60793/] []
+	   2020/04/04 22:30:50 [GET] [127.0.0.1:60793/] []
+	   # Start new stream: 127.0.0.1->127.0.0.1 60846->60793
+	   # Start new stream: 127.0.0.1->127.0.0.1 60793->60846
+	   2020/04/04 22:30:53 [GET] [127.0.0.1:60793/] []
+	   # Start new stream: 127.0.0.1->127.0.0.1 60847->60793
+	   # Start new stream: 127.0.0.1->127.0.0.1 60793->60847
+	   2020/04/04 22:30:53 [GET] [127.0.0.1:60793/] []
+	   # Start new stream: 127.0.0.1->127.0.0.1 60848->60793
+	   # Start new stream: 127.0.0.1->127.0.0.1 60793->60848
+	   2020/04/04 22:30:53 [GET] [127.0.0.1:60793/] []
+	   # Start new stream: 127.0.0.1->127.0.0.1 60849->60793
+	   # Start new stream: 127.0.0.1->127.0.0.1 60793->60849
+	   2020/04/04 22:30:53 [GET] [127.0.0.1:60793/] []
+	   # Start new stream: 127.0.0.1->127.0.0.1 60850->60793
+	   # Start new stream: 127.0.0.1->127.0.0.1 60793->60850
+	   2020/04/04 22:30:53 [GET] [127.0.0.1:60793/] []
+	*/
 }
 
 type Poster9 struct {
