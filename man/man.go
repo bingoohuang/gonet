@@ -30,7 +30,7 @@ import (
 )
 
 // T is the a special interface for additional tag for the man1.
-type T interface{ t() }
+type T struct{}
 
 // URL is the URL address for the http requests.
 type URL string

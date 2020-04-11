@@ -1,7 +1,10 @@
 # gonet
 
-[![Build Status](https://travis-ci.org/bingoohuang/gonet.svg?branch=master)](https://travis-ci.org/bingoohuang/gonet)
-
+[![Travis CI](https://img.shields.io/travis/bingoohuang/gonet/master.svg?style=flat-square)](https://travis-ci.com/bingoohuang/gonet)
+[![Software License](https://img.shields.io/badge/License-MIT-orange.svg?style=flat-square)](https://github.com/bingoohuang/gonet/blob/master/LICENSE.md)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](https://godoc.org/github.com/bingoohuang/gonet)
+[![Coverage Status](http://codecov.io/github/bingoohuang/gonet/coverage.svg?branch=master)](http://codecov.io/github/bingoohuang/gonet?branch=master)
+[![goreport](https://www.goreportcard.com/badge/github.com/bingoohuang/gonet)](https://www.goreportcard.com/report/github.com/bingoohuang/gonet)
 
 ## Declarative HTTP requests.
 
@@ -109,3 +112,6 @@ gonet.MustGet("https://httpbin.org/get").TLSClientConfig(tlsClientConf).String()
 1. [CFSSL从根证书，到业务侧证书一键生成](https://github.com/cloudflare/cfssl)
 1. [A simple, modern and secure encryption tool with small explicit keys, no config options, and UNIX-style composability.](https://github.com/FiloSottile/age)
 1. [RSA 的原理与实现](https://github.com/cj1128/rsa-demo)
+1. [sethgrid/pester Go (golang) http calls with retries and backoff](https://github.com/sethgrid/pester)
+1. [pojozhang/sugar Declarative HTTP client for Golang](https://github.com/pojozhang/sugar)
+
