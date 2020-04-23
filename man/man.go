@@ -370,9 +370,21 @@ func createBody(inputs []reflect.Value) (io.Reader, string, bool, error) {
 	fileValue := findInputByType(inputs, fileType)
 
 	if !fileValue.IsValid() {
-		j, _ := json.Marshal(inputs[0].Interface())
+		i0 := inputs[0]
+		kind := i0.Kind()
 
-		return bytes.NewReader(j), HeadJSON, false, nil
+		if kind == reflect.Ptr {
+			kind = i0.Elem().Kind()
+		}
+
+		switch kind {
+		case reflect.Map, reflect.Struct, reflect.Slice, reflect.Array:
+			j, _ := json.Marshal(i0.Interface())
+
+			return bytes.NewReader(j), HeadJSON, false, nil
+		}
+
+		return strings.NewReader(fmt.Sprintf("%v", i0.Interface())), "", false, nil
 	}
 
 	r, contentType, err := prepareFile(inputs, fileValue)
