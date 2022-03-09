@@ -16,6 +16,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestTLSGenRootFiles(t *testing.T) {
+	assert.Nil(t, os.MkdirAll("v0", 0777))
+	assert.Nil(t, TLSGenRootFiles("v0", "root.key", "root.pem"))
+}
+
 func TestTlsCertsGenv1(t *testing.T) {
 	assert.Nil(t, os.MkdirAll("v1", 0777))
 	defer os.RemoveAll("v1")

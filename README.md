@@ -95,6 +95,7 @@ gonet.MustGet("https://httpbin.org/get").TLSClientConfig(tlsClientConf).String()
 
 ## Thanks
 
+1. [golang-tls](https://github.com/denji/golang-tls)
 1. [urllib](https://github.com/GiterLab/urllib)
 1. [go-resty](https://github.com/go-resty/resty/tree/v2)
 1. [sling](https://github.com/dghubble/sling)
