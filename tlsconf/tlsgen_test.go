@@ -4,14 +4,13 @@ import (
 	"bufio"
 	"crypto/tls"
 	"fmt"
+	"github.com/bingoohuang/gg/pkg/netx/freeport"
 	"io"
 	"log"
 	"net"
 	"os"
 	"os/exec"
 	"testing"
-
-	"github.com/bingoohuang/gonet/freeport"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -74,8 +73,8 @@ func TestTlsCertsGenv3(t *testing.T) {
 
 func create(serverRootCA, clientRoot, serverKey, serverCrt, clientKey, clientCrt string, t *testing.T) {
 	tlsConfig := CreateServer(serverKey, serverCrt, clientRoot)
-	portStr := freeport.PortStr()
-	ln, err := tls.Listen("tcp", ":"+portStr, tlsConfig)
+	port := freeport.Port()
+	ln, err := tls.Listen("tcp", fmt.Sprintf(":%d", port), tlsConfig)
 
 	if err != nil {
 		assert.Error(t, err)
@@ -92,11 +91,13 @@ func create(serverRootCA, clientRoot, serverKey, serverCrt, clientKey, clientCrt
 		handleConn(conn, t)
 	}()
 
-	client(serverRootCA, clientKey, clientCrt, portStr, t)
+	client(serverRootCA, clientKey, clientCrt, port, t)
 }
 
-func client(serverRootCA, clientKey, clientCrt string, portStr string, t *testing.T) {
-	conn, err := tls.Dial("tcp", "127.0.0.1:"+portStr, CreateClient(clientKey, clientCrt, serverRootCA))
+func client(serverRootCA, clientKey, clientCrt string, port int, t *testing.T) {
+	add := fmt.Sprintf("127.0.0.1:%d", port)
+	tlsConfig := CreateClient(clientKey, clientCrt, serverRootCA)
+	conn, err := tls.Dial("tcp", add, tlsConfig)
 	assert.Nil(t, err)
 
 	defer conn.Close()

@@ -7,7 +7,6 @@
 ![image](https://user-images.githubusercontent.com/1940588/71564898-12d34580-2ae3-11ea-88c1-28ae94e38f0d.png)
 
 
-
 ## 快速生成自签名证书
 
 生成自签名证书传统工具是OpenSSL。不过OpenSSL不论是其复杂的命令选项，还是更加复杂配置都会让人头皮发麻。这里介绍一个更简单的生成自签名证书的工具: [square/certstrap](https://github.com/square/certstrap).具体安装请参考其文档。
@@ -72,16 +71,17 @@ $: certigo dump out/server.crt
 ** CERTIFICATE 1 **
 Valid: 2019-08-26 09:34 UTC to 2021-08-26 09:34 UTC
 Subject:
-	CN=server
+CN=server
 Issuer:
-	CN=ExampleCA
+CN=ExampleCA
 DNS Names:
-	*.example.com
+*.example.com
 IP Addresses:
-	127.0.0.1
+127.0.0.1
 ```
 
 ### PKCS 格式证书
+
 生成PKCS格式的证书可以直接点击安装到系统证书簇中，方便一些应用（浏览器等）的使用。具体生成PKCS 格式证书，使用OpenSSL命令如下:
 
 `$: openssl pkcs12 -export -out client.p12 -inkey out/client.key -in out/client.crt -certfile out/ExampleCA.crt`
@@ -96,12 +96,12 @@ IP Addresses:
 import "github.com/x-mod/tlsconfig"
 
 cf := tlsconfig.New(
-    //服务端 TLS 证书
-    tlsconfig.CertKeyPair("out/server.crt", "out/server.key"),
-    //客户端 TLS 证书签名 CA
-    tlsconfig.ClientCA("out/exampleCA.crt"),
-    //验证客户端证书
-    tlsconfig.ClientAuthVerified(),
+//服务端 TLS 证书
+tlsconfig.CertKeyPair("out/server.crt", "out/server.key"),
+//客户端 TLS 证书签名 CA
+tlsconfig.ClientCA("out/exampleCA.crt"),
+//验证客户端证书
+tlsconfig.ClientAuthVerified(),
 )
 ```
 
@@ -111,10 +111,10 @@ cf := tlsconfig.New(
 import "github.com/x-mod/tlsconfig"
 
 cf := tlsconfig.New(
-    //服务端 TLS 证书签名 CA
-    tlsconfig.CA("out/exampleCA.crt"),
-    //客户端证书 TLS 证书
-    tlsconfig.CertKeyPair("out/client.crt", "out/client.key"),
+//服务端 TLS 证书签名 CA
+tlsconfig.CA("out/exampleCA.crt"),
+//客户端证书 TLS 证书
+tlsconfig.CertKeyPair("out/client.crt", "out/client.key"),
 )
 ```
 
