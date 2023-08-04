@@ -21,7 +21,11 @@ type OptionsFn func(options *Options)
 // WithBasic set basic auth, auth should be in format of username + ":" + password
 func WithBasic(auth string) OptionsFn {
 	return func(options *Options) {
-		options.Basic = base64.StdEncoding.EncodeToString([]byte(auth))
+		if auth != "" {
+			options.Basic = base64.StdEncoding.EncodeToString([]byte(auth))
+		} else {
+			options.Basic = ""
+		}
 	}
 }
 
