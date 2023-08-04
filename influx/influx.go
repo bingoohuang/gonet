@@ -1,6 +1,7 @@
 package influx
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,12 +12,34 @@ import (
 	"github.com/bingoohuang/gonet"
 )
 
-// Query Query execute influxQl (refer to https://docs.influxdata.com/influxdb/v1.7/query_language)
+type Options struct {
+	Basic string
+}
+
+type OptionsFn func(options *Options)
+
+// WithBasic set basic auth, auth should be in format of username + ":" + password
+func WithBasic(auth string) OptionsFn {
+	return func(options *Options) {
+		options.Basic = base64.StdEncoding.EncodeToString([]byte(auth))
+	}
+}
+
+// Query execute influxQl (refer to https://docs.influxdata.com/influxdb/v1.7/query_language)
 // influxDBAddr  InfluxDB的连接地址， 例如http://localhost:8086, 注意：1. 右边没有/ 2. 右边不带其它path，例如/query等。
-func Query(influxDBAddr, influxQl string) (string, error) {
+// usage example: influx.Query(addr, ql, influx.WithBasic("username:password"))
+func Query(influxDBAddr, influxQl string, fns ...OptionsFn) (string, error) {
 	req, err := gonet.Get(influxDBAddr + `/query`)
 	if err != nil {
 		return "", err
+	}
+
+	options := &Options{}
+	for _, fn := range fns {
+		fn(options)
+	}
+	if options.Basic != "" {
+		req.Header("Authorization", "Basic "+options.Basic)
 	}
 
 	req.Param("q", influxQl)
@@ -26,12 +49,20 @@ func Query(influxDBAddr, influxQl string) (string, error) {
 
 // Write 写入打点值
 // refer https://github.com/DCSO/fluxline/blob/master/encoder.go
-func Write(influxDBWriteAddr, line string) (*http.Response, string, error) {
+// usage example: influx.Write(addr, line, influx.WithBasic("username:password"))
+func Write(influxDBWriteAddr, line string, fns ...OptionsFn) (*http.Response, string, error) {
 	req, err := gonet.Post(influxDBWriteAddr)
 	if err != nil {
 		return nil, "", err
 	}
 
+	options := &Options{}
+	for _, fn := range fns {
+		fn(options)
+	}
+	if options.Basic != "" {
+		req.Header("Authorization", "Basic "+options.Basic)
+	}
 	req.Body([]byte(line))
 
 	rsp, err := req.SendOut()
