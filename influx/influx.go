@@ -13,25 +13,29 @@ import (
 
 // Query Query execute influxQl (refer to https://docs.influxdata.com/influxdb/v1.7/query_language)
 // influxDBAddr  InfluxDB的连接地址， 例如http://localhost:8086, 注意：1. 右边没有/ 2. 右边不带其它path，例如/query等。
-func Query(influxDBAddr, influxQl string) (string, error) {
+func Query(influxDBAddr, influxQl, username, password string) (string, error) {
 	req, err := gonet.Get(influxDBAddr + `/query`)
 	if err != nil {
 		return "", err
 	}
-
+	if username != "" {
+		req.BasicAuth(username, password)
+	}
 	req.Param("q", influxQl)
-
+	
 	return req.String()
 }
 
 // Write 写入打点值
 // refer https://github.com/DCSO/fluxline/blob/master/encoder.go
-func Write(influxDBWriteAddr, line string) (*http.Response, string, error) {
+func Write(influxDBWriteAddr, line, username, password string) (*http.Response, string, error) {
 	req, err := gonet.Post(influxDBWriteAddr)
 	if err != nil {
 		return nil, "", err
 	}
-
+	if username != "" {
+		req.BasicAuth(username, password)
+	}
 	req.Body([]byte(line))
 
 	rsp, err := req.SendOut()
